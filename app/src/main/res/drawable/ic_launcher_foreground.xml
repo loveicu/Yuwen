@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 开卷（书页）造型前景 -->
+    <group android:scaleX="0.5" android:scaleY="0.5" android:pivotX="54" android:pivotY="54">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M54,32 C46,26 34,24 26,24 L26,80 C34,80 46,82 54,88 C62,82 74,80 82,80 L82,24 C74,24 62,26 54,32 Z" />
+        <path
+            android:fillColor="#E3F2FD"
+            android:pathData="M54,36 C48,31 38,29 30,29 L30,76 C38,76 48,78 54,83 L54,36 Z" />
+        <path
+            android:fillColor="#90CAF9"
+            android:pathData="M38,38 L44,38 L44,42 L38,42 Z M38,46 L44,46 L44,50 L38,50 Z M38,54 L44,54 L44,58 L38,58 Z" />
+        <path
+            android:fillColor="#90CAF9"
+            android:pathData="M62,38 L74,38 L74,42 L62,42 Z M62,46 L74,46 L74,50 L62,50 Z M62,54 L74,54 L74,58 L62,58 Z" />
+    </group>
+</vector>

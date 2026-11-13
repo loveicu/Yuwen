@@ -1,0 +1,176 @@
+package com.wencui.quiz.ui.screens
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.Backdrop
+import com.wencui.quiz.QuizViewModel
+import com.wencui.quiz.ui.components.PressableGlass
+import com.wencui.quiz.ui.glass.GlassShapes
+import com.wencui.quiz.ui.glass.GlassStyle
+import com.wencui.quiz.ui.glass.glassPanel
+
+/** 错题本：列出所有错题，支持一键重练。 */
+@Composable
+fun WrongBookScreen(
+    backdrop: Backdrop,
+    dark: Boolean,
+    viewModel: QuizViewModel,
+    modifier: Modifier = Modifier
+) {
+    val mistakes = viewModel.mistakeQuestions()
+
+    Column(modifier.fillMaxSize()) {
+        Row(
+            Modifier
+                .statusBarsPadding()
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PressableGlass(
+                onClick = { viewModel.goHome() },
+                shape = GlassShapes.button,
+                backdrop = backdrop,
+                dark = dark
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "返回",
+                    Modifier.padding(10.dp)
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(
+                "错题本 · ${mistakes.size} 题",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (mistakes.isEmpty()) {
+                item {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 60.dp)
+                    ) {
+                        Column(
+                            Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("🎉", style = MaterialTheme.typography.displayMedium)
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                "错题本是空的",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                "去刷几道题试试吧",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            } else {
+                item {
+                    PressableGlass(
+                        onClick = { viewModel.startMistakes() },
+                        shape = GlassShapes.bar,
+                        backdrop = backdrop,
+                        dark = dark,
+                        style = GlassStyle.Button,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            Modifier.padding(vertical = 14.dp).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Rounded.PlayArrow,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "重练全部错题",
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                items(mistakes.size) { index ->
+                    val q = mistakes[index]
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .glassPanel(backdrop, GlassShapes.card, GlassStyle.Card, dark)
+                    ) {
+                        Column(Modifier.padding(18.dp)) {
+                            Text(
+                                q.category,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                q.stem,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "正确答案：${q.answerText}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            if (q.explanation.isNotBlank()) {
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    q.explanation,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            item { Spacer(Modifier.navigationBarsPadding()) }
+        }
+    }
+}
