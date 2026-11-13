@@ -7,12 +7,14 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
@@ -29,8 +32,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -40,6 +45,8 @@ import com.wencui.quiz.ui.components.PressableGlass
 import com.wencui.quiz.ui.glass.GlassShapes
 import com.wencui.quiz.ui.glass.GlassStyle
 import com.wencui.quiz.ui.glass.glassPanel
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 /**
  * 答题页：题目玻璃卡片 + 选项列表 + 提交按钮。
@@ -54,6 +61,18 @@ fun QuizScreen(
 ) {
     val state = viewModel.uiState
     val question = state.currentQuestion ?: return
+    val haptic = LocalHapticFeedback.current
+
+    // 作答后触觉反馈：答对轻震、答错重震
+    LaunchedEffect(state.chosenIndex) {
+        if (state.chosenIndex != null) {
+            val q = state.currentQuestion ?: return@LaunchedEffect
+            val correct = state.chosenIndex == q.answerIndex
+            haptic.performHapticFeedback(
+                if (correct) HapticFeedbackType.LongPress else HapticFeedbackType.TextHandleMove
+            )
+        }
+    }
 
     Column(modifier.fillMaxSize()) {
         // 顶部：返回 + 进度
@@ -82,6 +101,34 @@ fun QuizScreen(
                         (state.sessionCategory?.let { " · $it" } ?: ""),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        // 答题进度条
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .height(4.dp)
+        ) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Color(0x14808C99),
+                        RoundedCornerShape(2.dp)
+                    )
+            )
+            Box(
+                Modifier
+                    .fillMaxWidth(fraction = (state.currentIndex + 1f) / state.questions.size)
+                    .fillMaxHeight()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
+                        ),
+                        RoundedCornerShape(2.dp)
+                    )
             )
         }
 

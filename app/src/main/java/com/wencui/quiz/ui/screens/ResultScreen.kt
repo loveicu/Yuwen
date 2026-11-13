@@ -22,6 +22,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -32,6 +37,9 @@ import com.wencui.quiz.ui.components.PressableGlass
 import com.wencui.quiz.ui.glass.GlassShapes
 import com.wencui.quiz.ui.glass.GlassStyle
 import com.wencui.quiz.ui.glass.glassPanel
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 
 /** 结算页：本轮正确率环形展示 + 再来一轮 / 回主页。 */
 @Composable
@@ -43,6 +51,17 @@ fun ResultScreen(
 ) {
     val state = viewModel.uiState
     val accuracy = (state.sessionAccuracy * 100).toInt()
+
+    // 数字滚动动画：进入页面后从 0 滚到实际正确率
+    var displayAccuracy by remember { mutableIntStateOf(0) }
+    LaunchedEffect(accuracy) {
+        val steps = 30
+        for (i in 0..steps) {
+            displayAccuracy = (accuracy * i) / steps
+            kotlinx.coroutines.delay(28)
+        }
+        displayAccuracy = accuracy
+    }
 
     Column(modifier.fillMaxSize()) {
         Row(
@@ -97,7 +116,7 @@ fun ResultScreen(
                             else -> "温故知新"
                         }
                         Text(
-                            "$accuracy%",
+                            "$displayAccuracy%",
                             style = MaterialTheme.typography.displayLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -113,6 +132,23 @@ fun ResultScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (state.sessionType == "daily") {
+                            Spacer(Modifier.height(12.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Rounded.LocalFireDepartment,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    "打卡成功 · 连续 ${state.streak} 天",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                        }
                     }
                 }
             }

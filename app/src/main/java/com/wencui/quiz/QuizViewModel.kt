@@ -5,11 +5,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
 import com.wencui.quiz.data.AnswerRecord
+import com.wencui.quiz.data.DailyChallenge
 import com.wencui.quiz.data.QuizQuestion
 import com.wencui.quiz.data.QuizRepository
-import kotlinx.coroutines.launch
 
 /** 主页面路由。 */
 enum class Screen {
@@ -24,10 +23,16 @@ data class QuizUiState(
     val chosenIndex: Int? = null,
     val records: List<AnswerRecord> = emptyList(),
     val sessionCategory: String? = null,
+    /** 会话类型：random / daily / category / mistakes */
+    val sessionType: String = "random",
     val mistakeIds: Set<Int> = emptySet(),
     // 累计统计（持久化）
     val totalAnswered: Int = 0,
-    val totalCorrect: Int = 0
+    val totalCorrect: Int = 0,
+    // 每日一练
+    val dailyDone: Boolean = false,
+    val streak: Int = 0,
+    val bestStreak: Int = 0
 ) {
     val currentQuestion: QuizQuestion?
         get() = questions.getOrNull(currentIndex)
@@ -48,13 +53,16 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
         private set
 
     private val prefs = QuizPrefs(repo.appContext)
+    private var saved = prefs.load()
 
     init {
-        val saved = prefs.load()
         uiState = uiState.copy(
             totalAnswered = saved.totalAnswered,
             totalCorrect = saved.totalCorrect,
-            mistakeIds = saved.mistakeIds.toSet()
+            mistakeIds = saved.mistakeIds.toSet(),
+            dailyDone = saved.lastDailyKey == DailyChallenge.todayKey(),
+            streak = saved.streak,
+            bestStreak = saved.bestStreak
         )
     }
 
@@ -77,21 +85,26 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
 
     /** 开始一轮随机练习。 */
     fun startRandom(count: Int = DEFAULT_SESSION_SIZE) {
-        beginSession(repo.drawRandom(count), category = null)
+        beginSession(repo.drawRandom(count), category = null, type = "random")
     }
 
     /** 开始某一分类的练习。 */
     fun startCategory(category: String) {
-        beginSession(repo.drawRandom(DEFAULT_SESSION_SIZE, category), category = category)
+        beginSession(repo.drawRandom(DEFAULT_SESSION_SIZE, category), category = category, type = "category")
+    }
+
+    /** 每日一练：今天固定 10 题；会话结束时计入打卡。 */
+    fun startDaily() {
+        beginSession(DailyChallenge.todayQuestions(repo.allQuestions), category = null, type = "daily")
     }
 
     /** 重练错题本。 */
     fun startMistakes() {
         val wrong = repo.allByIds(uiState.mistakeIds.toList())
-        if (wrong.isNotEmpty()) beginSession(wrong.shuffled(), category = null)
+        if (wrong.isNotEmpty()) beginSession(wrong.shuffled(), category = null, type = "mistakes")
     }
 
-    private fun beginSession(questions: List<QuizQuestion>, category: String?) {
+    private fun beginSession(questions: List<QuizQuestion>, category: String?, type: String) {
         if (questions.isEmpty()) return
         uiState = uiState.copy(
             screen = Screen.Quiz,
@@ -99,7 +112,8 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
             currentIndex = 0,
             chosenIndex = null,
             records = emptyList(),
-            sessionCategory = category
+            sessionCategory = category,
+            sessionType = type
         )
     }
 
@@ -116,22 +130,51 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
             totalCorrect = uiState.totalCorrect + if (correct) 1 else 0,
             mistakeIds = if (correct) uiState.mistakeIds - q.id else uiState.mistakeIds + q.id
         )
-        prefs.save(uiState.totalAnswered, uiState.totalCorrect, uiState.mistakeIds)
+        persistProgress()
     }
 
-    /** 下一题；最后一题则进入结算页。 */
+    /** 下一题；最后一题则进入结算页（每日一练此时结算打卡）。 */
     fun next() {
         if (uiState.chosenIndex == null) return
         if (uiState.isLastQuestion) {
+            if (uiState.sessionType == "daily") settleDaily()
             uiState = uiState.copy(screen = Screen.Result)
         } else {
             uiState = uiState.copy(currentIndex = uiState.currentIndex + 1, chosenIndex = null)
         }
     }
 
+    /** 结算每日打卡：今天完成则更新连胜。 */
+    private fun settleDaily() {
+        val today = DailyChallenge.todayKey()
+        if (saved.lastDailyKey == today) return // 已打过卡
+        val yesterday = DailyChallenge.yesterdayKey()
+        val newStreak = if (saved.lastDailyKey == yesterday) saved.streak + 1 else 1
+        saved = saved.copy(
+            lastDailyKey = today,
+            streak = newStreak,
+            bestStreak = maxOf(saved.bestStreak, newStreak)
+        )
+        uiState = uiState.copy(
+            dailyDone = true,
+            streak = newStreak,
+            bestStreak = saved.bestStreak
+        )
+        persistProgress()
+    }
+
+    private fun persistProgress() {
+        saved = saved.copy(
+            totalAnswered = uiState.totalAnswered,
+            totalCorrect = uiState.totalCorrect,
+            mistakeIds = uiState.mistakeIds.toList()
+        )
+        prefs.save(saved)
+    }
+
     // endregion
 
-    /** 错题本列表（按题库顺序）。 */
+    /** 错题本列表。 */
     fun mistakeQuestions(): List<QuizQuestion> = repo.allByIds(uiState.mistakeIds.toList())
 
     fun categoryCount(category: String): Int = repo.questionsByCategory(category).size
@@ -140,6 +183,7 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
 
     companion object {
         const val DEFAULT_SESSION_SIZE = 15
+        const val DAILY_SESSION_SIZE = 10
 
         fun factory(repo: QuizRepository): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {

@@ -34,6 +34,8 @@ import com.wencui.quiz.ui.components.PressableGlass
 import com.wencui.quiz.ui.glass.GlassShapes
 import com.wencui.quiz.ui.glass.GlassStyle
 import com.wencui.quiz.ui.glass.glassPanel
+import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 
 /**
  * 主页：学习概览 + 随机练习入口 + 分类列表 + 错题本入口。
@@ -77,6 +79,17 @@ fun HomeScreen(
                 totalCorrect = state.totalCorrect,
                 mistakes = state.mistakeIds.size,
                 bankSize = viewModel.totalCount
+            )
+        }
+
+        item {
+            DailyCard(
+                backdrop = backdrop,
+                dark = dark,
+                dailyDone = state.dailyDone,
+                streak = state.streak,
+                bestStreak = state.bestStreak,
+                onStart = { viewModel.startDaily() }
             )
         }
 
@@ -192,6 +205,60 @@ fun HomeScreen(
         }
 
         item { Spacer(Modifier.height(28.dp)) }
+    }
+}
+
+@Composable
+private fun DailyCard(
+    backdrop: Backdrop,
+    dark: Boolean,
+    dailyDone: Boolean,
+    streak: Int,
+    bestStreak: Int,
+    onStart: () -> Unit
+) {
+    PressableGlass(
+        onClick = onStart,
+        enabled = true,
+        shape = GlassShapes.bar,
+        backdrop = backdrop,
+        dark = dark,
+        style = GlassStyle.Button,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                if (dailyDone) Icons.Rounded.LocalFireDepartment else Icons.Rounded.CalendarToday,
+                contentDescription = null,
+                tint = if (dailyDone) MaterialTheme.colorScheme.secondary
+                else MaterialTheme.colorScheme.tertiary
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (dailyDone) "今日已完成 · 明天再来" else "每日一练 · 10 题",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    if (dailyDone) "连续打卡 $streak 天 · 最长 $bestStreak 天"
+                    else "每天一套固定卷 · 已连续 $streak 天",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (!dailyDone) {
+                Text(
+                    "GO",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
     }
 }
 

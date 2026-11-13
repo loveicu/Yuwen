@@ -5,12 +5,16 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-/** 持久化的学习数据：累计答题数、正确数、错题 ID 列表。 */
+/** 持久化的学习数据。 */
 @Serializable
 data class SavedProgress(
     val totalAnswered: Int = 0,
     val totalCorrect: Int = 0,
-    val mistakeIds: List<Int> = emptyList()
+    val mistakeIds: List<Int> = emptyList(),
+    // 每日一练
+    val lastDailyKey: String = "",
+    val streak: Int = 0,
+    val bestStreak: Int = 0
 )
 
 /** 基于 SharedPreferences + JSON 的轻量持久化。 */
@@ -25,12 +29,7 @@ class QuizPrefs(context: Context) {
             .getOrDefault(SavedProgress())
     }
 
-    fun save(totalAnswered: Int, totalCorrect: Int, mistakeIds: Set<Int>) {
-        val data = SavedProgress(
-            totalAnswered = totalAnswered,
-            totalCorrect = totalCorrect,
-            mistakeIds = mistakeIds.toList()
-        )
+    fun save(data: SavedProgress) {
         prefs.edit().putString(KEY_PROGRESS, json.encodeToString(data)).apply()
     }
 

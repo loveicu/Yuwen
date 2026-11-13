@@ -18,27 +18,30 @@ private data class QuestionBankFile(
 class QuizRepository private constructor(private val context: Context) {
 
     private val json = Json { ignoreUnknownKeys = true }
-    private val allQuestions: List<QuizQuestion>
+    private val allQuestionsInternal: List<QuizQuestion>
     private val byIdMap: Map<Int, QuizQuestion>
 
     init {
         val text = context.assets.open(BANK_FILE).bufferedReader().use { it.readText() }
         val parsed = json.decodeFromString(QuestionBankFile.serializer(), text)
-        allQuestions = parsed.questions
-        byIdMap = allQuestions.associateBy { it.id }
+        allQuestionsInternal = parsed.questions
+        byIdMap = allQuestionsInternal.associateBy { it.id }
     }
 
     /** 供持久化层使用的应用上下文。 */
     val appContext: Context get() = context.applicationContext
 
     val categories: List<String> by lazy {
-        allQuestions.map { it.category }.distinct().sorted()
+        allQuestionsInternal.map { it.category }.distinct().sorted()
     }
 
-    val totalCount: Int get() = allQuestions.size
+    /** 全部题目（只读视图）。 */
+    val allQuestions: List<QuizQuestion> get() = allQuestionsInternal
+
+    val totalCount: Int get() = allQuestionsInternal.size
 
     fun questionsByCategory(category: String): List<QuizQuestion> =
-        allQuestions.filter { it.category == category }
+        allQuestionsInternal.filter { it.category == category }
 
     fun byId(id: Int): QuizQuestion? = byIdMap[id]
 
@@ -47,7 +50,7 @@ class QuizRepository private constructor(private val context: Context) {
 
     /** 随机抽取 n 题（不重复），可按分类过滤。 */
     fun drawRandom(count: Int, category: String? = null): List<QuizQuestion> {
-        val pool = if (category == null) allQuestions else questionsByCategory(category)
+        val pool = if (category == null) allQuestionsInternal else questionsByCategory(category)
         return pool.shuffled().take(count)
     }
 
