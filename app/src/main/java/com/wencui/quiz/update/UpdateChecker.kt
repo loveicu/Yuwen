@@ -1,8 +1,6 @@
 package com.wencui.quiz.update
 
 import android.content.Context
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -67,11 +65,12 @@ object UpdateChecker {
 /** APK 下载器：优先直连，失败自动切换 gh-proxy.org 加速。 */
 object ApkDownloader {
 
-    suspend fun download(
+    /** 非挂起函数：已在后台线程调用，直接阻塞式下载。 */
+    fun download(
         context: Context,
         url: String,
         onProgress: (Float) -> Unit
-    ): File? = withContext(Dispatchers.IO) {
+    ): File? {
         val candidates = buildList {
             add(url)
             // 直连下载失败概率高时，代理前缀兜底（release 下载对国内不友好）
@@ -80,9 +79,9 @@ object ApkDownloader {
 
         for (candidate in candidates) {
             val file = runCatching { downloadOne(context, candidate, onProgress) }.getOrNull()
-            if (file != null && file.length() > 100_000) return@withContext file
+            if (file != null && file.length() > 100_000) return file
         }
-        null
+        return null
     }
 
     private fun downloadOne(

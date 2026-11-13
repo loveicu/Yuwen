@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.Backdrop
 import com.wencui.quiz.update.ReleaseInfo
 import com.wencui.quiz.ui.glass.GlassShapes
 import com.wencui.quiz.ui.glass.GlassStyle
@@ -48,6 +49,7 @@ fun UpdateDialog(
     state: UpdateState,
     localVersion: String,
     dark: Boolean,
+    backdrop: Backdrop,
     onDismiss: () -> Unit,
     onDownload: () -> Unit,
     onInstall: () -> Unit
@@ -75,7 +77,7 @@ fun UpdateDialog(
                 Modifier
                     .fillMaxWidth()
                     .padding(vertical = 20.dp)
-                    .glassPanel(GlassShapes.card, GlassStyle.Bar, dark)
+                    .glassPanel(backdrop, GlassShapes.card, GlassStyle.Bar, dark)
             ) {
                 Column(Modifier.padding(22.dp)) {
                     Text(

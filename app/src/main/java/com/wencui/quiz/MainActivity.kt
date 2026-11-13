@@ -131,6 +131,7 @@ fun WenCuiApp() {
             state = updateState,
             localVersion = localVersion,
             dark = dark,
+            backdrop = backdrop,
             onDismiss = { updateState = UpdateState.Idle },
             onDownload = {
                 val release = (updateState as? UpdateState.Available)?.release
