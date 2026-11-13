@@ -25,7 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.wencui.quiz.data.QuizRepository
-import com.wencui.quiz.ui.components.AuroraBackground
+import com.wencui.quiz.ui.components.DynamicAuroraBackground
 import com.wencui.quiz.ui.components.UpdateDialog
 import com.wencui.quiz.ui.components.UpdateState
 import com.wencui.quiz.ui.glass.appBackdrop
@@ -106,7 +106,7 @@ fun WenCuiApp() {
 
     Box(Modifier.fillMaxSize()) {
         // 背景层：液态玻璃采样的源头。layerBackdrop 实时录制此层内容
-        AuroraBackground(Modifier.appBackdrop(backdrop))
+        DynamicAuroraBackground(Modifier.appBackdrop(backdrop), dark)
 
         // 前景层：所有玻璃面板实时采样上面的背景
         AnimatedContent(
