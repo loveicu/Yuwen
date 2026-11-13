@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -65,29 +66,29 @@ private val BLOBS = listOf(
     Blob(0.60f, 0.20f, 0.07f, 0.09f, 0.37f, 0.21f, 6.0f, 0.28f, 45f, 20f, 0.26f, 0.28f)
 )
 
-/** 昼夜底色关键帧：(小时, 顶部, 中部, 底部)，亮度均保持可读范围。 */
+/** 昼夜底色关键帧：小时 + 三段渐变色（顶/中/底）。 */
+private data class DayFrame(val hour: Float, val top: Color, val mid: Color, val bottom: Color)
+
 private val DAY_KEYFRAMES = listOf(
-    Triple(6f, Triple(Color(0xFFFFF3E0), Color(0xFFFFF8EE), Color(0xFFFDFBF6))),   // 清晨 金粉
-    Triple(11f, Triple(Color(0xFFEAF3FF), Color(0xFFF7F3EA), Color(0xFFFDFBF6))),  // 白天 蓝宣
-    Triple(17f, Triple(Color(0xFFFFE9D6), Color(0xFFFBEDE3), Color(0xFFFDFBF6))),  // 黄昏 暖橙
-    Triple(21f, Triple(Color(0xFFE3E8F7), Color(0xFFF0EEF5), Color(0xFFF7F6FA))),  // 夜晚 淡蓝紫
-    Triple(29f, Triple(Color(0xFFFFF3E0), Color(0xFFFFF8EE), Color(0xFFFDFBF6)))   // 环回清晨(=6+24)
+    DayFrame(6f,  Color(0xFFFFF3E0), Color(0xFFFFF8EE), Color(0xFFFDFBF6)),  // 清晨 金粉
+    DayFrame(11f, Color(0xFFEAF3FF), Color(0xFFF7F3EA), Color(0xFFFDFBF6)),  // 白天 蓝宣
+    DayFrame(17f, Color(0xFFFFE9D6), Color(0xFFFBEDE3), Color(0xFFFDFBF6)),  // 黄昏 暖橙
+    DayFrame(21f, Color(0xFFE3E8F7), Color(0xFFF0EEF5), Color(0xFFF7F6FA)),  // 夜晚 淡蓝紫
+    DayFrame(29f, Color(0xFFFFF3E0), Color(0xFFFFF8EE), Color(0xFFFDFBF6))   // 环回清晨(=6+24)
 )
 
 /** 按当前小时在关键帧间线性插值底色。 */
 private fun timeOfDayColors(hour: Float): List<Color> {
     var i = 0
-    while (i < DAY_KEYFRAMES.lastIndex && DAY_KEYFRAMES[i + 1].first <= hour) i++
+    while (i < DAY_KEYFRAMES.lastIndex && DAY_KEYFRAMES[i + 1].hour <= hour) i++
     val a = DAY_KEYFRAMES[i]
     val b = DAY_KEYFRAMES[min(i + 1, DAY_KEYFRAMES.lastIndex)]
-    val span = (b.first - a.first).coerceAtLeast(1f)
-    val f = ((hour - a.first) / span).coerceIn(0f, 1f)
-    val (at, am, ab) = a.second
-    val (bt, bm, bb) = b.second
+    val span = (b.hour - a.hour).coerceAtLeast(1f)
+    val f = ((hour - a.hour) / span).coerceIn(0f, 1f)
     return listOf(
-        lerpColor(at, bt, f),
-        lerpColor(am, bm, f),
-        lerpColor(ab, bb, f)
+        lerpColor(a.top, b.top, f),
+        lerpColor(a.mid, b.mid, f),
+        lerpColor(a.bottom, b.bottom, f)
     )
 }
 
@@ -123,7 +124,7 @@ fun DynamicAuroraBackground(
                     onPress = { pos ->
                         pressPoint = pos
                         pressGlow.animateTo(1f, tween(180))
-                        awaitRelease()
+                        tryAwaitRelease()
                         pressGlow.animateTo(0f, tween(900))
                     }
                 )
