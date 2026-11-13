@@ -11,6 +11,7 @@ data class SavedProgress(
     val totalAnswered: Int = 0,
     val totalCorrect: Int = 0,
     val mistakeIds: List<Int> = emptyList(),
+    val favoriteIds: List<Int> = emptyList(),
     // 每日一练
     val lastDailyKey: String = "",
     val streak: Int = 0,

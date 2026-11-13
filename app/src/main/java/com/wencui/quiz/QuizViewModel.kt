@@ -7,25 +7,32 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.wencui.quiz.data.AnswerRecord
 import com.wencui.quiz.data.DailyChallenge
+import com.wencui.quiz.data.PlayQuestion
 import com.wencui.quiz.data.QuizQuestion
 import com.wencui.quiz.data.QuizRepository
 
 /** 主页面路由。 */
 enum class Screen {
-    Home, Quiz, Result, WrongBook
+    Home, Quiz, Result, WrongBook, Favorites
+}
+
+/** 会话模式：normal 正常刷题 / memorize 背题模式（即时看解释，可反复看） */
+enum class SessionMode {
+    Normal, Memorize
 }
 
 /** 全局 UI 状态。 */
 data class QuizUiState(
     val screen: Screen = Screen.Home,
-    val questions: List<QuizQuestion> = emptyList(),
+    val questions: List<PlayQuestion> = emptyList(),
     val currentIndex: Int = 0,
     val chosenIndex: Int? = null,
     val records: List<AnswerRecord> = emptyList(),
     val sessionCategory: String? = null,
-    /** 会话类型：random / daily / category / mistakes */
     val sessionType: String = "random",
+    val mode: SessionMode = SessionMode.Normal,
     val mistakeIds: Set<Int> = emptySet(),
+    val favoriteIds: Set<Int> = emptySet(),
     // 累计统计（持久化）
     val totalAnswered: Int = 0,
     val totalCorrect: Int = 0,
@@ -34,7 +41,7 @@ data class QuizUiState(
     val streak: Int = 0,
     val bestStreak: Int = 0
 ) {
-    val currentQuestion: QuizQuestion?
+    val currentQuestion: PlayQuestion?
         get() = questions.getOrNull(currentIndex)
 
     val isLastQuestion: Boolean
@@ -60,6 +67,7 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
             totalAnswered = saved.totalAnswered,
             totalCorrect = saved.totalCorrect,
             mistakeIds = saved.mistakeIds.toSet(),
+            favoriteIds = saved.favoriteIds.toSet(),
             dailyDone = saved.lastDailyKey == DailyChallenge.todayKey(),
             streak = saved.streak,
             bestStreak = saved.bestStreak
@@ -79,41 +87,54 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
         uiState = uiState.copy(screen = Screen.WrongBook)
     }
 
+    fun openFavorites() {
+        uiState = uiState.copy(screen = Screen.Favorites)
+    }
+
     // endregion
 
     // region 刷题会话
 
     /** 开始一轮随机练习。 */
-    fun startRandom(count: Int = DEFAULT_SESSION_SIZE) {
-        beginSession(repo.drawRandom(count), category = null, type = "random")
+    fun startRandom(count: Int = DEFAULT_SESSION_SIZE, mode: SessionMode = SessionMode.Normal) {
+        beginSession(repo.drawRandom(count), category = null, type = "random", mode = mode)
     }
 
     /** 开始某一分类的练习。 */
-    fun startCategory(category: String) {
-        beginSession(repo.drawRandom(DEFAULT_SESSION_SIZE, category), category = category, type = "category")
+    fun startCategory(category: String, mode: SessionMode = SessionMode.Normal) {
+        beginSession(repo.drawRandom(DEFAULT_SESSION_SIZE, category), category = category, type = "category", mode = mode)
     }
 
     /** 每日一练：今天固定 10 题；会话结束时计入打卡。 */
     fun startDaily() {
-        beginSession(DailyChallenge.todayQuestions(repo.allQuestions), category = null, type = "daily")
+        beginSession(DailyChallenge.todayQuestions(repo.allQuestions), category = null, type = "daily", mode = SessionMode.Normal)
     }
 
     /** 重练错题本。 */
-    fun startMistakes() {
+    fun startMistakes(mode: SessionMode = SessionMode.Normal) {
         val wrong = repo.allByIds(uiState.mistakeIds.toList())
-        if (wrong.isNotEmpty()) beginSession(wrong.shuffled(), category = null, type = "mistakes")
+        if (wrong.isNotEmpty()) beginSession(wrong.shuffled(), category = null, type = "mistakes", mode = mode)
     }
 
-    private fun beginSession(questions: List<QuizQuestion>, category: String?, type: String) {
+    /** 重练收藏夹。 */
+    fun startFavorites(mode: SessionMode = SessionMode.Normal) {
+        val favs = repo.allByIds(uiState.favoriteIds.toList())
+        if (favs.isNotEmpty()) beginSession(favs.shuffled(), category = null, type = "favorites", mode = mode)
+    }
+
+    private fun beginSession(questions: List<QuizQuestion>, category: String?, type: String, mode: SessionMode) {
         if (questions.isEmpty()) return
+        // 每题生成独立的乱序作答视图
+        val playQuestions = questions.map { it.shuffledForPlay() }
         uiState = uiState.copy(
             screen = Screen.Quiz,
-            questions = questions,
+            questions = playQuestions,
             currentIndex = 0,
             chosenIndex = null,
             records = emptyList(),
             sessionCategory = category,
-            sessionType = type
+            sessionType = type,
+            mode = mode
         )
     }
 
@@ -133,9 +154,17 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
         persistProgress()
     }
 
+    /** 切换当前题收藏状态。 */
+    fun toggleFavorite() {
+        val q = uiState.currentQuestion ?: return
+        val newFavs = if (q.id in uiState.favoriteIds) uiState.favoriteIds - q.id else uiState.favoriteIds + q.id
+        uiState = uiState.copy(favoriteIds = newFavs)
+        persistProgress()
+    }
+
     /** 下一题；最后一题则进入结算页（每日一练此时结算打卡）。 */
     fun next() {
-        if (uiState.chosenIndex == null) return
+        if (uiState.chosenIndex == null && uiState.mode == SessionMode.Normal) return
         if (uiState.isLastQuestion) {
             if (uiState.sessionType == "daily") settleDaily()
             uiState = uiState.copy(screen = Screen.Result)
@@ -144,10 +173,18 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
         }
     }
 
-    /** 结算每日打卡：今天完成则更新连胜。 */
+    /** 背题模式：直接查看答案与全部解释，不判分。 */
+    fun revealAnswer() {
+        val q = uiState.currentQuestion ?: return
+        if (uiState.chosenIndex == null) {
+            uiState = uiState.copy(chosenIndex = q.answerIndex)
+        }
+    }
+
+    /** 结算每日打卡。 */
     private fun settleDaily() {
         val today = DailyChallenge.todayKey()
-        if (saved.lastDailyKey == today) return // 已打过卡
+        if (saved.lastDailyKey == today) return
         val yesterday = DailyChallenge.yesterdayKey()
         val newStreak = if (saved.lastDailyKey == yesterday) saved.streak + 1 else 1
         saved = saved.copy(
@@ -167,7 +204,8 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
         saved = saved.copy(
             totalAnswered = uiState.totalAnswered,
             totalCorrect = uiState.totalCorrect,
-            mistakeIds = uiState.mistakeIds.toList()
+            mistakeIds = uiState.mistakeIds.toList(),
+            favoriteIds = uiState.favoriteIds.toList()
         )
         prefs.save(saved)
     }
@@ -177,9 +215,12 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
     /** 错题本列表。 */
     fun mistakeQuestions(): List<QuizQuestion> = repo.allByIds(uiState.mistakeIds.toList())
 
-    fun categoryCount(category: String): Int = repo.questionsByCategory(category).size
+    /** 收藏列表。 */
+    fun favoriteQuestions(): List<QuizQuestion> = repo.allByIds(uiState.favoriteIds.toList())
 
-    fun questionById(id: Int): QuizQuestion? = repo.byId(id)
+    fun isFavorite(id: Int): Boolean = id in uiState.favoriteIds
+
+    fun categoryCount(category: String): Int = repo.questionsByCategory(category).size
 
     companion object {
         const val DEFAULT_SESSION_SIZE = 15

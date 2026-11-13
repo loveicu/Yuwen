@@ -1,31 +1,49 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+// 统一签名：keystore 随仓库分发（个人项目，密钥无需保密）
+// 作用：每次 CI 构建产物签名一致，新版本可直接覆盖安装，无需卸载重装
+val releaseKeystore = rootProject.file("wencui-release.keystore")
+
 android {
     namespace = "com.wencui.quiz"
     compileSdk = 37
+
+    signingConfigs {
+        create("release") {
+            storeFile = releaseKeystore
+            storePassword = "wencui2026"
+            keyAlias = "wencui"
+            keyPassword = "wencui2026"
+        }
+    }
 
     defaultConfig {
         applicationId = "com.wencui.quiz"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = 4
+        versionName = "1.3.0"
     }
 
-    // 个人使用：release 直接采用 debug 签名，构建产物可直接安装
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        // debug 也统一到同一签名，避免任何场景的签名冲突
+        debug {
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -37,7 +55,7 @@ android {
 
 kotlin {
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 

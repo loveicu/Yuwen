@@ -30,6 +30,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.Backdrop
 import com.wencui.quiz.QuizViewModel
+import com.wencui.quiz.SessionMode
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.ui.graphics.Color
 import com.wencui.quiz.ui.components.PressableGlass
 import com.wencui.quiz.ui.glass.GlassShapes
 import com.wencui.quiz.ui.glass.GlassStyle
@@ -123,6 +127,55 @@ fun HomeScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                }
+            }
+        }
+
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                PressableGlass(
+                    onClick = { viewModel.startRandom(mode = SessionMode.Memorize) },
+                    shape = GlassShapes.card,
+                    backdrop = backdrop,
+                    dark = dark,
+                    style = GlassStyle.Card,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(
+                        Modifier.padding(vertical = 14.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Rounded.Lightbulb,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("背题模式", fontWeight = FontWeight.Medium)
+                    }
+                }
+                PressableGlass(
+                    onClick = { viewModel.openFavorites() },
+                    shape = GlassShapes.card,
+                    backdrop = backdrop,
+                    dark = dark,
+                    style = GlassStyle.Card,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(
+                        Modifier.padding(vertical = 14.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Rounded.Star,
+                            contentDescription = null,
+                            tint = Color(0xFFFFB300)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("收藏夹", fontWeight = FontWeight.Medium)
                     }
                 }
             }

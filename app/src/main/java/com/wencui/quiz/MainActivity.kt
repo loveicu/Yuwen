@@ -29,6 +29,7 @@ import com.wencui.quiz.ui.components.AuroraBackground
 import com.wencui.quiz.ui.components.UpdateDialog
 import com.wencui.quiz.ui.components.UpdateState
 import com.wencui.quiz.ui.glass.appBackdrop
+import com.wencui.quiz.ui.screens.FavoritesScreen
 import com.wencui.quiz.ui.screens.HomeScreen
 import com.wencui.quiz.ui.screens.QuizScreen
 import com.wencui.quiz.ui.screens.ResultScreen
@@ -123,6 +124,7 @@ fun WenCuiApp() {
                 Screen.Quiz -> QuizScreen(backdrop, dark, viewModel)
                 Screen.Result -> ResultScreen(backdrop, dark, viewModel)
                 Screen.WrongBook -> WrongBookScreen(backdrop, dark, viewModel)
+                Screen.Favorites -> FavoritesScreen(backdrop, dark, viewModel)
             }
         }
 

@@ -28,6 +28,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,20 +40,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.Backdrop
 import com.wencui.quiz.QuizViewModel
+import com.wencui.quiz.SessionMode
 import com.wencui.quiz.ui.components.PressableGlass
 import com.wencui.quiz.ui.glass.GlassShapes
 import com.wencui.quiz.ui.glass.GlassStyle
 import com.wencui.quiz.ui.glass.glassPanel
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 
 /**
- * 答题页：题目玻璃卡片 + 选项列表 + 提交按钮。
- * 切题时使用水平滑动 + 淡入淡出的组合动画，配合玻璃折射产生「液态翻页」感。
+ * 答题页。
+ * - 每次进入会话，所有题目的选项顺序独立随机（运行时乱序）
+ * - 答题后展示每选项的详细解释（题库提供时）
+ * - 收藏按钮随时可点亮
+ * - 背题模式：不判分，直接翻看答案与解释
  */
 @Composable
 fun QuizScreen(
@@ -66,8 +73,7 @@ fun QuizScreen(
     // 作答后触觉反馈：答对轻震、答错重震
     LaunchedEffect(state.chosenIndex) {
         if (state.chosenIndex != null) {
-            val q = state.currentQuestion ?: return@LaunchedEffect
-            val correct = state.chosenIndex == q.answerIndex
+            val correct = state.chosenIndex == question.answerIndex
             haptic.performHapticFeedback(
                 if (correct) HapticFeedbackType.LongPress else HapticFeedbackType.TextHandleMove
             )
@@ -75,7 +81,7 @@ fun QuizScreen(
     }
 
     Column(modifier.fillMaxSize()) {
-        // 顶部：返回 + 进度
+        // 顶部：返回 + 进度 + 收藏
         Row(
             Modifier
                 .statusBarsPadding()
@@ -98,10 +104,28 @@ fun QuizScreen(
             Spacer(Modifier.width(12.dp))
             Text(
                 "${state.currentIndex + 1} / ${state.questions.size}" +
-                        (state.sessionCategory?.let { " · $it" } ?: ""),
+                        (state.sessionCategory?.let { " · $it" } ?: "") +
+                        if (state.mode == SessionMode.Memorize) " · 背题" else "",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f)
             )
+            // 收藏按钮
+            PressableGlass(
+                onClick = { viewModel.toggleFavorite() },
+                shape = GlassShapes.button,
+                backdrop = backdrop,
+                dark = dark
+            ) {
+                Icon(
+                    if (viewModel.isFavorite(question.id)) Icons.Rounded.Favorite
+                    else Icons.Rounded.FavoriteBorder,
+                    contentDescription = "收藏",
+                    Modifier.padding(10.dp),
+                    tint = if (viewModel.isFavorite(question.id)) Color(0xFFE53935)
+                    else MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
 
         // 答题进度条
@@ -114,10 +138,7 @@ fun QuizScreen(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(
-                        Color(0x14808C99),
-                        RoundedCornerShape(2.dp)
-                    )
+                    .background(Color(0x14808C99), RoundedCornerShape(2.dp))
             )
             Box(
                 Modifier
@@ -191,14 +212,23 @@ fun QuizScreen(
                     )
                 }
 
-                item {
-                    Spacer(Modifier.height(4.dp))
-                }
+                item { Spacer(Modifier.height(4.dp)) }
 
                 item {
                     if (chosen != null) {
                         Column {
-                            ExplanationCard(backdrop, dark, q.explanation, chosen == q.answerIndex)
+                            // 每选项解释（题库提供时逐项展示）
+                            if (q.explanations.size == q.options.size) {
+                                ExplanationsCard(
+                                    backdrop, dark, q,
+                                    highlightIndex = chosen
+                                )
+                            } else if (q.defaultExplanation.isNotBlank()) {
+                                SimpleExplanationCard(
+                                    backdrop, dark, q.defaultExplanation,
+                                    chosen == q.answerIndex
+                                )
+                            }
                             Spacer(Modifier.height(12.dp))
                             PressableGlass(
                                 onClick = { viewModel.next() },
@@ -217,6 +247,34 @@ fun QuizScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 14.dp)
+                                )
+                            }
+                        }
+                    } else if (state.mode == SessionMode.Memorize) {
+                        // 背题模式：直接看答案按钮
+                        PressableGlass(
+                            onClick = { viewModel.revealAnswer() },
+                            shape = GlassShapes.bar,
+                            backdrop = backdrop,
+                            dark = dark,
+                            style = GlassStyle.Button,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                Modifier.padding(vertical = 14.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Lightbulb,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.tertiary
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "看答案",
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.tertiary
                                 )
                             }
                         }
@@ -282,8 +340,66 @@ private fun OptionCard(
     }
 }
 
+/** 逐项解释卡：列出每个选项的对错与详细理由。 */
 @Composable
-private fun ExplanationCard(
+private fun ExplanationsCard(
+    backdrop: Backdrop,
+    dark: Boolean,
+    q: com.wencui.quiz.data.PlayQuestion,
+    highlightIndex: Int
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .glassPanel(backdrop, GlassShapes.card, GlassStyle.Bar, dark)
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                "选项解析",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            q.options.forEachIndexed { i, opt ->
+                val isAnswer = i == q.answerIndex
+                val isChosen = i == highlightIndex
+                Row {
+                    Text(
+                        "ABCD"[i.coerceAtMost(3)].toString(),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = when {
+                            isAnswer -> Color(0xFF2E7D32)
+                            isChosen -> Color(0xFFC62828)
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.width(28.dp)
+                    )
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            opt,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isAnswer) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (isAnswer) Color(0xFF2E7D32)
+                            else MaterialTheme.colorScheme.onSurface
+                        )
+                        val note = q.explanations.getOrNull(i)
+                        if (!note.isNullOrBlank()) {
+                            Text(
+                                note,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SimpleExplanationCard(
     backdrop: Backdrop,
     dark: Boolean,
     explanation: String,
