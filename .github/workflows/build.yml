@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,14 +29,39 @@ jobs:
       - name: Build release APK
         run: ./gradlew assembleRelease --stacktrace --no-daemon
 
+      - name: Get version name
+        id: version
+        run: |
+          VERSION=$(grep -o 'versionName = "[^"]*"' app/build.gradle.kts | cut -d'"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Rename APK
+        run: |
+          mkdir -p release
+          cp app/build/outputs/apk/release/app-release.apk "release/文萃刷题-v${{ steps.version.outputs.version }}.apk"
+
+      # 每次构建都更新「latest」release，供应用内更新系统检查
+      - name: Delete existing release if exists
+        run: |
+          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create/Update latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: 最新构建 v${{ steps.version.outputs.version }}
+          body: |
+            自动构建于 ${{ github.event.head_commit.message }}
+            
+            > 通过应用内「检查更新」或直接下载安装。版本号以文件名为准。
+          files: release/*.apk
+          token: ${{ secrets.GITHUB_TOKEN }}
+          make_latest: true
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: WenCuiQuiz-apk
-          path: app/build/outputs/apk/release/*.apk
-
-      - name: Upload to Release (on tag)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: app/build/outputs/apk/release/*.apk
+          path: release/*.apk
