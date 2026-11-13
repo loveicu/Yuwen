@@ -1,6 +1,8 @@
 package com.wencui.quiz.update
 
 import android.content.Context
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -48,6 +50,7 @@ object UpdateChecker {
         "https://api.github.com/repos/loveicu/Yuwen/releases/latest"
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** 挂起函数：在协程中调用（如 LaunchedEffect）。 */
     suspend fun check(): ReleaseInfo? = withContext(Dispatchers.IO) {
         runCatching {
             val conn = URL(API_URL).openConnection() as HttpURLConnection
