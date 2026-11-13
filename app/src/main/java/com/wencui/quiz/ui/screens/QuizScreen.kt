@@ -163,12 +163,13 @@ fun QuizScreen(
                             ) {
                                 Text(
                                     if (state.isLastQuestion) "查看结算" else "下一题",
-                                    Modifier.padding(vertical = 14.dp),
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 14.dp)
                                 )
                             }
                         }

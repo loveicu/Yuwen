@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.wencui.quiz.data.QuizRepository
 import com.wencui.quiz.ui.components.AuroraBackground
 import com.wencui.quiz.ui.glass.appBackdrop
 import com.wencui.quiz.ui.screens.HomeScreen
