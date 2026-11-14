@@ -6,17 +6,21 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.wencui.quiz.data.AnswerRecord
+import com.wencui.quiz.data.CategoryStat
 import com.wencui.quiz.data.DailyChallenge
 import com.wencui.quiz.data.PlayQuestion
 import com.wencui.quiz.data.QuizQuestion
 import com.wencui.quiz.data.QuizRepository
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 /** 主页面路由。 */
 enum class Screen {
     Home, Quiz, Result, WrongBook, Favorites
 }
 
-/** 会话模式：normal 正常刷题 / memorize 背题模式（即时看解释，可反复看） */
+/** 会话模式。 */
 enum class SessionMode {
     Normal, Memorize
 }
@@ -33,13 +37,20 @@ data class QuizUiState(
     val mode: SessionMode = SessionMode.Normal,
     val mistakeIds: Set<Int> = emptySet(),
     val favoriteIds: Set<Int> = emptySet(),
-    // 累计统计（持久化）
     val totalAnswered: Int = 0,
     val totalCorrect: Int = 0,
-    // 每日一练
     val dailyDone: Boolean = false,
     val streak: Int = 0,
-    val bestStreak: Int = 0
+    val bestStreak: Int = 0,
+    // 连击
+    val combo: Int = 0,
+    val bestCombo: Int = 0,
+    // 分类掌握度
+    val categoryStats: Map<String, CategoryStat> = emptyMap(),
+    // 题库状态
+    val bankVersion: Int = 0,
+    val bankUpdating: Boolean = false,
+    val bankMessage: String? = null
 ) {
     val currentQuestion: PlayQuestion?
         get() = questions.getOrNull(currentIndex)
@@ -62,6 +73,10 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
     private val prefs = QuizPrefs(repo.appContext)
     private var saved = prefs.load()
 
+    /** 搜索状态（主页搜索框）。 */
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery
+
     init {
         uiState = uiState.copy(
             totalAnswered = saved.totalAnswered,
@@ -70,12 +85,79 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
             favoriteIds = saved.favoriteIds.toSet(),
             dailyDone = saved.lastDailyKey == DailyChallenge.todayKey(),
             streak = saved.streak,
-            bestStreak = saved.bestStreak
+            bestStreak = saved.bestStreak,
+            bestCombo = saved.bestCombo,
+            categoryStats = saved.categoryStats,
+            bankVersion = repo.bankVersion
         )
     }
 
-    val categories: List<String> get() = repo.categories
     val totalCount: Int get() = repo.totalCount
+
+    /** 分类列表（动态计算，云端题库更新后自动包含新分类）。 */
+    fun categories(): List<String> = repo.categoriesNow()
+
+    fun categoryCount(category: String): Int = repo.questionsByCategory(category).size
+
+    /** 分类掌握度：0.0~1.0；未作答返回 -1 表示无数据。 */
+    fun categoryAccuracy(category: String): Float {
+        val stat = uiState.categoryStats[category] ?: return -1f
+        return stat.accuracy
+    }
+
+    // region 搜索
+
+    fun updateSearch(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun searchResults(query: String): List<QuizQuestion> = repo.search(query)
+
+    /** 从搜索结果直接开始该题的专项练习（含同分类其余题）。 */
+    fun startFromSearch(question: QuizQuestion) {
+        val pool = repo.questionsByCategory(question.category)
+            .sortedByDescending { it.id == question.id } // 目标题排最前
+        beginSession(pool, category = question.category, type = "search", mode = SessionMode.Normal)
+    }
+
+    // endregion
+
+    // region 题库云端更新
+
+    fun updateBank() {
+        if (uiState.bankUpdating) return
+        uiState = uiState.copy(bankUpdating = true, bankMessage = null)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+            val result = com.wencui.quiz.update.BankUpdater.checkAndUpdate(
+                repo.bankVersion
+            ) { version, jsonText ->
+                // 解析并校验云端题库 JSON，通过后应用到仓库
+                runCatching {
+                    val bankJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                    val obj = bankJson.parseToJsonElement(jsonText).jsonObjectCompat
+                    val questions = bankJson.decodeFromJsonElement(
+                        kotlinx.serialization.builtins.ListSerializer(QuizQuestion.serializer()),
+                        obj["questions"] ?: return@runCatching false
+                    )
+                    repo.applyCloudBank(version, questions)
+                }.getOrDefault(false)
+            }
+            uiState = when (result) {
+                is com.wencui.quiz.update.BankUpdater.Result.Success ->
+                    uiState.copy(
+                        bankUpdating = false,
+                        bankVersion = repo.bankVersion,
+                        bankMessage = "题库已更新至 v${result.newVersion}（${result.count} 题）"
+                    )
+                is com.wencui.quiz.update.BankUpdater.Result.UpToDate ->
+                    uiState.copy(bankUpdating = false, bankMessage = "题库已是最新")
+                is com.wencui.quiz.update.BankUpdater.Result.Failure ->
+                    uiState.copy(bankUpdating = false, bankMessage = "更新失败：${result.message}")
+            }
+        }
+    }
+
+    // endregion
 
     // region 导航
 
@@ -95,28 +177,23 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
 
     // region 刷题会话
 
-    /** 开始一轮随机练习。 */
     fun startRandom(count: Int = DEFAULT_SESSION_SIZE, mode: SessionMode = SessionMode.Normal) {
         beginSession(repo.drawRandom(count), category = null, type = "random", mode = mode)
     }
 
-    /** 开始某一分类的练习。 */
     fun startCategory(category: String, mode: SessionMode = SessionMode.Normal) {
         beginSession(repo.drawRandom(DEFAULT_SESSION_SIZE, category), category = category, type = "category", mode = mode)
     }
 
-    /** 每日一练：今天固定 10 题；会话结束时计入打卡。 */
     fun startDaily() {
         beginSession(DailyChallenge.todayQuestions(repo.allQuestions), category = null, type = "daily", mode = SessionMode.Normal)
     }
 
-    /** 重练错题本。 */
     fun startMistakes(mode: SessionMode = SessionMode.Normal) {
         val wrong = repo.allByIds(uiState.mistakeIds.toList())
         if (wrong.isNotEmpty()) beginSession(wrong.shuffled(), category = null, type = "mistakes", mode = mode)
     }
 
-    /** 重练收藏夹。 */
     fun startFavorites(mode: SessionMode = SessionMode.Normal) {
         val favs = repo.allByIds(uiState.favoriteIds.toList())
         if (favs.isNotEmpty()) beginSession(favs.shuffled(), category = null, type = "favorites", mode = mode)
@@ -124,45 +201,59 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
 
     private fun beginSession(questions: List<QuizQuestion>, category: String?, type: String, mode: SessionMode) {
         if (questions.isEmpty()) return
-        // 每题生成独立的乱序作答视图
-        val playQuestions = questions.map { it.shuffledForPlay() }
         uiState = uiState.copy(
             screen = Screen.Quiz,
-            questions = playQuestions,
+            questions = questions.map { it.shuffledForPlay() },
             currentIndex = 0,
             chosenIndex = null,
             records = emptyList(),
+            combo = 0,
             sessionCategory = category,
             sessionType = type,
             mode = mode
         )
     }
 
-    /** 选择一个选项。首次选择时记分；答错进错题本。 */
+    /** 选择选项：判分 + 连击 + 掌握度统计。 */
     fun choose(index: Int) {
         val q = uiState.currentQuestion ?: return
-        if (uiState.chosenIndex != null) return // 已作答，防重复
+        if (uiState.chosenIndex != null) return
 
         val correct = index == q.answerIndex
+        val newCombo = if (correct) uiState.combo + 1 else 0
+
+        // 分类掌握度更新
+        val stat = uiState.categoryStats[q.category] ?: CategoryStat()
+        val newStat = stat.copy(
+            answered = stat.answered + 1,
+            correct = stat.correct + if (correct) 1 else 0
+        )
+
         uiState = uiState.copy(
             chosenIndex = index,
             records = uiState.records + AnswerRecord(q.id, index, correct),
+            combo = newCombo,
+            bestCombo = maxOf(uiState.bestCombo, newCombo),
             totalAnswered = uiState.totalAnswered + 1,
             totalCorrect = uiState.totalCorrect + if (correct) 1 else 0,
-            mistakeIds = if (correct) uiState.mistakeIds - q.id else uiState.mistakeIds + q.id
+            mistakeIds = if (correct) uiState.mistakeIds - q.id else uiState.mistakeIds + q.id,
+            categoryStats = uiState.categoryStats + (q.category to newStat)
+        )
+        saved = saved.copy(
+            bestCombo = maxOf(saved.bestCombo, newCombo),
+            categoryStats = uiState.categoryStats
         )
         persistProgress()
     }
 
-    /** 切换当前题收藏状态。 */
     fun toggleFavorite() {
         val q = uiState.currentQuestion ?: return
         val newFavs = if (q.id in uiState.favoriteIds) uiState.favoriteIds - q.id else uiState.favoriteIds + q.id
         uiState = uiState.copy(favoriteIds = newFavs)
+        saved = saved.copy(favoriteIds = newFavs.toList())
         persistProgress()
     }
 
-    /** 下一题；最后一题则进入结算页（每日一练此时结算打卡）。 */
     fun next() {
         if (uiState.chosenIndex == null && uiState.mode == SessionMode.Normal) return
         if (uiState.isLastQuestion) {
@@ -173,7 +264,6 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
         }
     }
 
-    /** 背题模式：直接查看答案与全部解释，不判分。 */
     fun revealAnswer() {
         val q = uiState.currentQuestion ?: return
         if (uiState.chosenIndex == null) {
@@ -181,7 +271,6 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
         }
     }
 
-    /** 结算每日打卡。 */
     private fun settleDaily() {
         val today = DailyChallenge.todayKey()
         if (saved.lastDailyKey == today) return
@@ -212,15 +301,16 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
 
     // endregion
 
-    /** 错题本列表。 */
     fun mistakeQuestions(): List<QuizQuestion> = repo.allByIds(uiState.mistakeIds.toList())
 
-    /** 收藏列表。 */
     fun favoriteQuestions(): List<QuizQuestion> = repo.allByIds(uiState.favoriteIds.toList())
 
     fun isFavorite(id: Int): Boolean = id in uiState.favoriteIds
 
-    fun categoryCount(category: String): Int = repo.questionsByCategory(category).size
+
+/** JsonElement -> JsonObject 的安全扩展。 */
+private val kotlinx.serialization.json.JsonElement.jsonObjectCompat: kotlinx.serialization.json.JsonObject
+    get() = this as kotlinx.serialization.json.JsonObject
 
     companion object {
         const val DEFAULT_SESSION_SIZE = 15

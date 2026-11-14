@@ -31,11 +31,13 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -70,13 +72,26 @@ fun QuizScreen(
     val question = state.currentQuestion ?: return
     val haptic = LocalHapticFeedback.current
 
-    // 作答后触觉反馈：答对轻震、答错重震
-    LaunchedEffect(state.chosenIndex) {
+    // 作答后触觉反馈：连击越高震感越强，答错单次重震
+    LaunchedEffect(state.chosenIndex, state.combo) {
         if (state.chosenIndex != null) {
             val correct = state.chosenIndex == question.answerIndex
-            haptic.performHapticFeedback(
-                if (correct) HapticFeedbackType.LongPress else HapticFeedbackType.TextHandleMove
-            )
+            if (correct) {
+                // combo 3/5/8 阶梯：多重 LongPress 模拟渐强
+                val pulses = when {
+                    state.combo >= 8 -> 3
+                    state.combo >= 5 -> 2
+                    state.combo >= 3 -> 1
+                    else -> 0
+                }
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                repeat(pulses) {
+                    delay(60)
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                }
+            } else {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            }
         }
     }
 
@@ -110,6 +125,23 @@ fun QuizScreen(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
+            // 连击火焰（combo >= 3 显示）
+            if (state.combo >= 3) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Rounded.LocalFireDepartment,
+                        contentDescription = null,
+                        tint = Color(0xFFFF7043)
+                    )
+                    Text(
+                        "x${state.combo}",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFF7043)
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+            }
             // 收藏按钮
             PressableGlass(
                 onClick = { viewModel.toggleFavorite() },

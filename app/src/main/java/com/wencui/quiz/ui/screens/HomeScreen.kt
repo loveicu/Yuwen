@@ -1,5 +1,7 @@
 package com.wencui.quiz.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,35 +17,40 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.Backdrop
 import com.wencui.quiz.QuizViewModel
 import com.wencui.quiz.SessionMode
-import androidx.compose.material.icons.rounded.Lightbulb
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.ui.graphics.Color
 import com.wencui.quiz.ui.components.PressableGlass
 import com.wencui.quiz.ui.glass.GlassShapes
 import com.wencui.quiz.ui.glass.GlassStyle
 import com.wencui.quiz.ui.glass.glassPanel
-import androidx.compose.material.icons.rounded.CalendarToday
-import androidx.compose.material.icons.rounded.LocalFireDepartment
 
 /**
- * 主页：学习概览 + 随机练习入口 + 分类列表 + 错题本入口。
- * 全部卡片都是液态玻璃材质，背后光晕漂移时可看到流动折射。
+ * 主页：统计 + 每日打卡 + 搜索 + 背题/收藏 + 分类（含掌握度）+ 题库更新。
  */
 @Composable
 fun HomeScreen(
@@ -53,6 +60,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val state = viewModel.uiState
+    val categories = viewModel.categories()
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -62,11 +70,28 @@ fun HomeScreen(
         item {
             Column(Modifier.statusBarsPadding()) {
                 Spacer(Modifier.height(8.dp))
-                Text(
-                    "文萃刷题",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "文萃刷题",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    // 连击火焰（combo >= 3 才显示）
+                    if (state.bestCombo >= 3) {
+                        Icon(
+                            Icons.Rounded.LocalFireDepartment,
+                            contentDescription = "最佳连击",
+                            tint = Color(0xFFFF7043)
+                        )
+                        Text(
+                            "${state.bestCombo}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFF7043)
+                        )
+                    }
+                }
                 Text(
                     "语文文化常识 · 日积月累",
                     style = MaterialTheme.typography.bodyMedium,
@@ -94,6 +119,21 @@ fun HomeScreen(
                 streak = state.streak,
                 bestStreak = state.bestStreak,
                 onStart = { viewModel.startDaily() }
+            )
+        }
+
+        // ===== 搜索框 =====
+        item {
+            SearchField(
+                backdrop = backdrop,
+                dark = dark,
+                onSearch = { query ->
+                    val results = viewModel.searchResults(query)
+                    if (results.isNotEmpty()) {
+                        // 直接开练第一题所在分类
+                        viewModel.startFromSearch(results.first())
+                    }
+                }
             )
         }
 
@@ -182,16 +222,20 @@ fun HomeScreen(
         }
 
         item {
-            Text(
-                "分类练习",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(top = 6.dp, start = 4.dp)
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp, start = 4.dp)) {
+                Text(
+                    "分类练习",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
 
-        items(viewModel.categories.size) { index ->
-            val category = viewModel.categories[index]
+        // 分类列表 + 掌握度徽章
+        items(categories.size) { index ->
+            val category = categories[index]
+            val accuracy = viewModel.categoryAccuracy(category)
             PressableGlass(
                 onClick = { viewModel.startCategory(category) },
                 shape = GlassShapes.card,
@@ -204,23 +248,71 @@ fun HomeScreen(
                     Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CategoryIcon(category)
+                    Icon(
+                        Icons.AutoMirrored.Rounded.MenuBook,
+                        contentDescription = category,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
                     Spacer(Modifier.width(14.dp))
-                    Text(
-                        category,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        "${viewModel.categoryCount(category)} 题",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            category,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        // 掌握度条
+                        if (accuracy >= 0f) {
+                            Spacer(Modifier.height(5.dp))
+                            Box(
+                                Modifier
+                                    .fillMaxWidth(0.6f)
+                                    .height(4.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
+                                        RoundedCornerShape(2.dp)
+                                    )
+                            ) {
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth(accuracy.coerceIn(0.04f, 1f))
+                                        .height(4.dp)
+                                        .background(
+                                            when {
+                                                accuracy >= 0.8f -> Color(0xFF4CAF50)
+                                                accuracy >= 0.6f -> Color(0xFFFFB300)
+                                                else -> Color(0xFFEF5350)
+                                            },
+                                            RoundedCornerShape(2.dp)
+                                        )
+                                )
+                            }
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            "${viewModel.categoryCount(category)} 题",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (accuracy >= 0f) {
+                            Text(
+                                "${(accuracy * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = when {
+                                    accuracy >= 0.8f -> Color(0xFF4CAF50)
+                                    accuracy >= 0.6f -> Color(0xFFFFB300)
+                                    else -> Color(0xFFEF5350)
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
 
+        // 错题本入口
         item {
             if (state.mistakeIds.isNotEmpty()) {
                 PressableGlass(
@@ -257,7 +349,150 @@ fun HomeScreen(
             }
         }
 
+        // ===== 题库云端更新 =====
+        item {
+            PressableGlass(
+                onClick = { viewModel.updateBank() },
+                enabled = !state.bankUpdating,
+                shape = GlassShapes.card,
+                backdrop = backdrop,
+                dark = dark,
+                style = GlassStyle.Card,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Rounded.CloudDownload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            if (state.bankUpdating) "正在检查题库更新…"
+                            else "检查题库更新",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            state.bankMessage ?: "题库版本 v${state.bankVersion}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
         item { Spacer(Modifier.height(28.dp)) }
+    }
+}
+
+/** 搜索输入框（玻璃材质）。 */
+@Composable
+private fun SearchField(
+    backdrop: Backdrop,
+    dark: Boolean,
+    onSearch: (String) -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .glassPanel(backdrop, GlassShapes.bar, GlassStyle.Bar, dark)
+    ) {
+        Row(
+            Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Rounded.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.width(10.dp))
+            Box(Modifier.weight(1f)) {
+                if (query.isEmpty()) {
+                    Text(
+                        "搜索题目 / 分类 / 关键词，回车开练",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+                BasicTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+        // 提交按钮（点 GO 搜索）
+        if (query.isNotEmpty()) {
+            Box(
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 8.dp)
+                    .clickable { onSearch(query) }
+            ) {
+                Text(
+                    "GO",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatsCard(
+    backdrop: Backdrop,
+    dark: Boolean,
+    totalAnswered: Int,
+    totalCorrect: Int,
+    mistakes: Int,
+    bankSize: Int
+) {
+    val accuracy = if (totalAnswered == 0) "--" else "${(totalCorrect * 100 / totalAnswered)}%"
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .glassPanel(backdrop, GlassShapes.card, GlassStyle.Card, dark)
+    ) {
+        Row(
+            Modifier.padding(horizontal = 20.dp, vertical = 18.dp)
+        ) {
+            StatCell("已刷题数", "$totalAnswered", Modifier.weight(1f))
+            StatCell("正确率", accuracy, Modifier.weight(1f))
+            StatCell("错题", "$mistakes", Modifier.weight(1f))
+            StatCell("题库", "$bankSize", Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun StatCell(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -313,53 +548,4 @@ private fun DailyCard(
             }
         }
     }
-}
-
-@Composable
-private fun StatsCard(
-    backdrop: Backdrop,
-    dark: Boolean,
-    totalAnswered: Int,
-    totalCorrect: Int,
-    mistakes: Int,
-    bankSize: Int
-) {
-    val accuracy = if (totalAnswered == 0) "--" else "${(totalCorrect * 100 / totalAnswered)}%"
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .glassPanel(backdrop, GlassShapes.card, GlassStyle.Card, dark)
-    ) {
-        Row(
-            Modifier.padding(horizontal = 20.dp, vertical = 18.dp)
-        ) {
-            StatCell("已刷题数", "$totalAnswered", Modifier.weight(1f))
-            StatCell("正确率", accuracy, Modifier.weight(1f))
-            StatCell("错题", "$mistakes", Modifier.weight(1f))
-            StatCell("题库", "$bankSize", Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-private fun StatCell(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            value,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun CategoryIcon(category: String) {
-    val icon: ImageVector = Icons.AutoMirrored.Rounded.MenuBook
-    Icon(icon, contentDescription = category, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
 }
