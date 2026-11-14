@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -102,6 +103,11 @@ fun WenCuiApp() {
                 }
             }
         }.start()
+    }
+
+    // 返回键路由：非主页时先回主页，主页则交给系统（退出）
+    BackHandler(enabled = viewModel.uiState.screen != Screen.Home) {
+        viewModel.goHome()
     }
 
     Box(Modifier.fillMaxSize()) {
