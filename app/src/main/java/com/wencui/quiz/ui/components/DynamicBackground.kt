@@ -1,6 +1,7 @@
 package com.wencui.quiz.ui.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -137,7 +138,7 @@ fun DynamicAuroraBackground(
     val accentAlpha = if (dark) 0.50f else 0.38f
     val blobScale = if (dark) 0.72f else 1f
 
-    Canvas(modifier) {
+    Canvas(modifier.fillMaxSize()) {
         val w = size.width
         val h = size.height
         val t = time
