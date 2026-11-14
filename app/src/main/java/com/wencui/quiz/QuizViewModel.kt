@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.wencui.quiz.data.AnswerRecord
-import com.wencui.quiz.data.CategoryStat
+import com.wencui.quiz.CategoryStat
 import com.wencui.quiz.data.DailyChallenge
 import com.wencui.quiz.data.PlayQuestion
 import com.wencui.quiz.data.QuizQuestion
