@@ -3,6 +3,7 @@ package com.wencui.quiz.update
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -12,7 +13,9 @@ import java.net.URL
 /** GitHub Release 信息（只取我们关心的字段）。 */
 @Serializable
 data class ReleaseInfo(
-    val tagName: String = "",
+    // GitHub API 返回 snake_case，必须用 @SerialName 映射，
+    // 否则反序列化后恒为默认值（历史上 tagName 恒为 "" 的隐藏根因之一）
+    @SerialName("tag_name") val tagName: String = "",
     val name: String? = null,
     val body: String? = null,
     val assets: List<Asset> = emptyList()
@@ -20,11 +23,31 @@ data class ReleaseInfo(
     @Serializable
     data class Asset(
         val name: String,
-        val browserDownloadUrl: String = ""
+        @SerialName("browser_download_url") val browserDownloadUrl: String = ""
     )
 
     val apkAsset: Asset?
         get() = assets.firstOrNull { it.name.endsWith(".apk") }
+
+    /**
+     * 解析出的真实版本号（如 "1.8.1"）。
+     * tag 恒为 "latest"，真实版本号在 APK 文件名（中文前缀被 GitHub
+     * 清洗，如 "-v1.8.1.apk"）或 Release 显示名（"最新构建 v1.8.1"）里，
+     * 逐级回退；均解析不出返回 null（调用方退回用 tagName 比较）。
+     */
+    val version: String?
+        get() {
+            for (source in listOfNotNull(apkAsset?.name, name)) {
+                val m = VERSION_REGEX.find(source) ?: continue
+                return m.groupValues[1]
+            }
+            return null
+        }
+
+    companion object {
+        /** 匹配 "v1.8.1" / "1.8.1"；要求含点分段，避免误匹配纯数字的 artifact ID。 */
+        private val VERSION_REGEX = Regex("""v?(\d+(?:\.\d+)+)""")
+    }
 }
 
 /** 版本比较：1.2.10 > 1.2.9，逐段数值化比较。 */

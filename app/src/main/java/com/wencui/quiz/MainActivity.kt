@@ -76,7 +76,9 @@ fun WenCuiApp() {
     LaunchedEffect(Unit) {
         delay(3000)
         val release = UpdateChecker.check() ?: return@LaunchedEffect
-        if (isNewerVersion(release.tagName, localVersion) && release.apkAsset != null) {
+        // tag 恒为 "latest"，真实版本号需从 APK 文件名 / Release 名称解析
+        val remote = release.version ?: release.tagName
+        if (isNewerVersion(remote, localVersion) && release.apkAsset != null) {
             updateState = UpdateState.Available(release)
         }
     }

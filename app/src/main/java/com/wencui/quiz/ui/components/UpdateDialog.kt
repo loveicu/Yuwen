@@ -89,7 +89,7 @@ fun UpdateDialog(
                     val release = (state as? UpdateState.Available)?.release
                     if (release != null) {
                         Text(
-                            "${release.tagName}  (当前 v$localVersion)",
+                            "v${release.version ?: release.tagName}  (当前 v$localVersion)",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium
