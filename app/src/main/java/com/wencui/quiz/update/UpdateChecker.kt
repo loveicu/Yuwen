@@ -42,7 +42,7 @@ fun isNewerVersion(remote: String, local: String): Boolean {
 
 /**
  * 更新检查器：查询 GitHub Releases 最新版本。
- * 直接走 api.github.com（国内网络对 API 一般可达）。
+ * API 请求经 [Net] 双通道（直连 → gh-proxy 兜底）。
  */
 object UpdateChecker {
 
@@ -53,19 +53,13 @@ object UpdateChecker {
     /** 挂起函数：在协程中调用（如 LaunchedEffect）。 */
     suspend fun check(): ReleaseInfo? = withContext(Dispatchers.IO) {
         runCatching {
-            val conn = URL(API_URL).openConnection() as HttpURLConnection
-            conn.connectTimeout = 8000
-            conn.readTimeout = 8000
-            conn.setRequestProperty("User-Agent", "WenCuiQuiz-App")
-            conn.setRequestProperty("Accept", "application/vnd.github+json")
-            if (conn.responseCode != 200) return@runCatching null
-            val text = conn.inputStream.bufferedReader().use { it.readText() }
+            val text = Net.getText(API_URL)
             json.decodeFromString(ReleaseInfo.serializer(), text)
         }.getOrNull()
     }
 }
 
-/** APK 下载器：优先直连，失败自动切换 gh-proxy.org 加速。 */
+/** APK 下载器：直连失败自动切换 gh-proxy.org 加速。 */
 object ApkDownloader {
 
     /** 非挂起函数：已在后台线程调用，直接阻塞式下载。 */
@@ -74,12 +68,7 @@ object ApkDownloader {
         url: String,
         onProgress: (Float) -> Unit
     ): File? {
-        val candidates = buildList {
-            add(url)
-            // 直连下载失败概率高时，代理前缀兜底（release 下载对国内不友好）
-            add("https://gh-proxy.org/$url")
-        }
-
+        val candidates = listOf(url, Net.PROXY + url)
         for (candidate in candidates) {
             val file = runCatching { downloadOne(context, candidate, onProgress) }.getOrNull()
             if (file != null && file.length() > 100_000) return file
@@ -97,11 +86,12 @@ object ApkDownloader {
         val out = File(dir, "update.apk")
         tmp.delete(); out.delete()
 
-        val conn = URL(url).openConnection() as HttpURLConnection
-        conn.connectTimeout = 10000
-        conn.readTimeout = 30000
-        conn.setRequestProperty("User-Agent", "WenCuiQuiz-App")
-        conn.instanceFollowRedirects = true
+        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 10000
+            readTimeout = 30000
+            setRequestProperty("User-Agent", "WenCuiQuiz-App")
+            instanceFollowRedirects = true
+        }
 
         val total = conn.contentLengthLong.takeIf { it > 0 } ?: -1L
         var downloaded = 0L
