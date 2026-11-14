@@ -1,37 +1,31 @@
 package com.wencui.quiz.ui.components
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.delay
 import java.util.Calendar
 import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * 真正的动态背景：
+ * 真正的动态背景（v2 修复版）：
  *
- * 1. 【帧时钟驱动】以 withFrameNanos 逐帧推进（60fps 连续动画），
- *    每个光斑沿李萨如曲线（Lissajous）运动——频率互质，轨迹永不重复；
- * 2. 【呼吸与色相漂移】光斑半径随时间起伏，颜色在色环上缓慢游移；
- * 3. 【触摸交互】手指按下时，指尖处升起一团光晕，松手后缓缓消散；
- * 4. 【昼夜色调】基于设备真实时间（清晨/白天/黄昏/夜晚）对底色做柔和插值。
+ * 1. 【帧时钟驱动】withFrameNanos 逐帧推进，光斑沿李萨如曲线运动，
+ *    频率互质 → 轨迹永不重复；
+ * 2. 【呼吸与色相漂移】半径起伏 + 色相环游移；
+ * 3. 【昼夜色调】真实时钟插值，0-6 点正确落在「深夜」区间；
+ * 4. 【深色模式】暗色主题使用专属低亮度配色，不再发白。
  *
- * 性能说明：时间值只被 Canvas 的 draw lambda 读取，
- * 动画不触发测量/布局，仅重绘，GPU 负担极小。
+ * 移除了背景层的手势检测：背景处于事件分发链末端，
+ * 挂手势既收不到被卡片覆盖区域的事件，也会干扰列表滚动，得不偿失。
  */
 
 /** 帧时钟：返回自首次组合起的秒数，每帧更新。 */
@@ -40,6 +34,16 @@ private fun rememberFrameSeconds(): State<Float> = produceState(0f) {
     val start = withFrameNanos { it }
     while (true) {
         withFrameNanos { now -> value = (now - start) / 1_000_000_000f }
+    }
+}
+
+/** 真实时钟的「当日小时浮点数」，每分钟刷新一次。 */
+@Composable
+private fun rememberHourOfDay(): State<Float> = produceState(0f) {
+    while (true) {
+        val cal = Calendar.getInstance()
+        value = cal.get(Calendar.HOUR_OF_DAY) + cal.get(Calendar.MINUTE) / 60f
+        delay(60_000L)  // 60 秒后刷新
     }
 }
 
@@ -69,22 +73,32 @@ private val BLOBS = listOf(
 /** 昼夜底色关键帧：小时 + 三段渐变色（顶/中/底）。 */
 private data class DayFrame(val hour: Float, val top: Color, val mid: Color, val bottom: Color)
 
-private val DAY_KEYFRAMES = listOf(
+private val LIGHT_KEYFRAMES = listOf(
     DayFrame(6f,  Color(0xFFFFF3E0), Color(0xFFFFF8EE), Color(0xFFFDFBF6)),  // 清晨 金粉
     DayFrame(11f, Color(0xFFEAF3FF), Color(0xFFF7F3EA), Color(0xFFFDFBF6)),  // 白天 蓝宣
     DayFrame(17f, Color(0xFFFFE9D6), Color(0xFFFBEDE3), Color(0xFFFDFBF6)),  // 黄昏 暖橙
-    DayFrame(21f, Color(0xFFE3E8F7), Color(0xFFF0EEF5), Color(0xFFF7F6FA)),  // 夜晚 淡蓝紫
+    DayFrame(21f, Color(0xFFC9D2EE), Color(0xFFD8DCEF), Color(0xFFE8E6EF)),  // 夜晚 淡蓝紫（加深）
     DayFrame(29f, Color(0xFFFFF3E0), Color(0xFFFFF8EE), Color(0xFFFDFBF6))   // 环回清晨(=6+24)
 )
 
-/** 按当前小时在关键帧间线性插值底色。 */
-private fun timeOfDayColors(hour: Float): List<Color> {
+/** 暗色模式专属关键帧：全时段低亮度，深夜更深。 */
+private val DARK_KEYFRAMES = listOf(
+    DayFrame(6f,  Color(0xFF1A2130), Color(0xFF161B26), Color(0xFF12151D)),  // 清晨 冷蓝
+    DayFrame(11f, Color(0xFF1C2433), Color(0xFF171C28), Color(0xFF12151D)),  // 白天 蓝灰
+    DayFrame(17f, Color(0xFF241F2E), Color(0xFF1B1826), Color(0xFF141218)),  // 黄昏 暖紫
+    DayFrame(21f, Color(0xFF131722), Color(0xFF10131C), Color(0xFF0C0E15)),  // 夜晚 深蓝
+    DayFrame(29f, Color(0xFF1A2130), Color(0xFF161B26), Color(0xFF12151D))
+)
+
+/** 按当前小时在关键帧间线性插值底色。0-6 点环回到 24-30 区间（深夜→清晨）。 */
+private fun timeOfDayColors(hour: Float, frames: List<DayFrame>): List<Color> {
+    val h = if (hour < frames.first().hour) hour + 24f else hour
     var i = 0
-    while (i < DAY_KEYFRAMES.lastIndex && DAY_KEYFRAMES[i + 1].hour <= hour) i++
-    val a = DAY_KEYFRAMES[i]
-    val b = DAY_KEYFRAMES[min(i + 1, DAY_KEYFRAMES.lastIndex)]
+    while (i < frames.lastIndex && frames[i + 1].hour <= h) i++
+    val a = frames[i]
+    val b = frames[min(i + 1, frames.lastIndex)]
     val span = (b.hour - a.hour).coerceAtLeast(1f)
-    val f = ((hour - a.hour) / span).coerceIn(0f, 1f)
+    val f = ((h - a.hour) / span).coerceIn(0f, 1f)
     return listOf(
         lerpColor(a.top, b.top, f),
         lerpColor(a.mid, b.mid, f),
@@ -105,31 +119,17 @@ fun DynamicAuroraBackground(
     dark: Boolean = false
 ) {
     val time by rememberFrameSeconds()
+    val hour by rememberHourOfDay()
 
-    // 触摸光晕：按下点亮，松手渐散
-    var pressPoint by remember { mutableStateOf(Offset.Zero) }
-    val pressGlow = remember { Animatable(0f) }
-
-    // 底色每分钟重算一次（真实时间昼夜渐变）
-    val baseColors = remember(time.toInt() / 60) {
-        val cal = Calendar.getInstance()
-        val hour = cal.get(Calendar.HOUR_OF_DAY) + cal.get(Calendar.MINUTE) / 60f
-        timeOfDayColors(hour)
+    // 真实时钟驱动：每分钟刷新；深浅色各有一套关键帧
+    val baseColors = remember(hour, dark) {
+        timeOfDayColors(hour, if (dark) DARK_KEYFRAMES else LIGHT_KEYFRAMES)
     }
 
-    Canvas(
-        modifier
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = { pos ->
-                        pressPoint = pos
-                        pressGlow.animateTo(1f, tween(180))
-                        tryAwaitRelease()
-                        pressGlow.animateTo(0f, tween(900))
-                    }
-                )
-            }
-    ) {
+    // 光斑在暗色下降低不透明度，避免夜里过于刺眼
+    val blobAlphaScale = if (dark) 0.62f else 1f
+
+    Canvas(modifier) {
         val w = size.width
         val h = size.height
 
@@ -143,34 +143,16 @@ fun DynamicAuroraBackground(
             val cy = (b.baseY + b.ampY * sin(t * b.freqY + b.phase * 1.73f)) * h
             val breathe = 1f + 0.14f * sin(t * b.breatheFreq + b.phase)
             val r = b.radius * min(w, h) * breathe
-            // 色相缓慢漂移
             val hue = ((b.hue + b.hueDrift * sin(t * 0.05f + b.phase)) % 360f + 360f) % 360f
             val color = Color.hsv(hue, 0.62f, 1f)
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(color.copy(alpha = b.alpha), Color.Transparent),
+                    colors = listOf(color.copy(alpha = b.alpha * blobAlphaScale), Color.Transparent),
                     center = Offset(cx, cy),
                     radius = r
                 ),
                 radius = r,
                 center = Offset(cx, cy)
-            )
-        }
-
-        // 3. 触摸光晕（指尖升起，松手消散）
-        if (pressGlow.value > 0.01f) {
-            val a = pressGlow.value
-            val r = w * 0.38f * (0.6f + 0.4f * a)
-            val glow = if (dark) Color.hsv(215f, 0.55f, 1f, 0.45f * a)
-            else Color.hsv(210f, 0.60f, 1f, 0.40f * a)
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(glow, Color.Transparent),
-                    center = pressPoint,
-                    radius = r
-                ),
-                radius = r,
-                center = pressPoint
             )
         }
     }
