@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.CloudDownload
@@ -40,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.Backdrop
 import com.wencui.quiz.QuizViewModel
@@ -50,7 +50,10 @@ import com.wencui.quiz.ui.glass.GlassStyle
 import com.wencui.quiz.ui.glass.glassPanel
 
 /**
- * 主页：统计 + 每日打卡 + 搜索 + 背题/收藏 + 分类（含掌握度）+ 题库更新。
+ * 主页（v2 布局）：
+ * - 统计卡精简为 3 格（题库总数并入副标题）
+ * - 分类改两列网格，长度减半
+ * - 搜索 GO 移入行内不遮挡输入
  */
 @Composable
 fun HomeScreen(
@@ -77,7 +80,6 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
-                    // 连击火焰（combo >= 3 才显示）
                     if (state.bestCombo >= 3) {
                         Icon(
                             Icons.Rounded.LocalFireDepartment,
@@ -93,7 +95,7 @@ fun HomeScreen(
                     }
                 }
                 Text(
-                    "语文文化常识 · 日积月累",
+                    "语文文化常识 · ${viewModel.totalCount} 题",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -106,8 +108,7 @@ fun HomeScreen(
                 dark = dark,
                 totalAnswered = state.totalAnswered,
                 totalCorrect = state.totalCorrect,
-                mistakes = state.mistakeIds.size,
-                bankSize = viewModel.totalCount
+                mistakes = state.mistakeIds.size
             )
         }
 
@@ -130,7 +131,6 @@ fun HomeScreen(
                 onSearch = { query ->
                     val results = viewModel.searchResults(query)
                     if (results.isNotEmpty()) {
-                        // 直接开练第一题所在分类
                         viewModel.startFromSearch(results.first())
                     }
                 }
@@ -222,93 +222,30 @@ fun HomeScreen(
         }
 
         item {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp, start = 4.dp)) {
-                Text(
-                    "分类练习",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            Text(
+                "分类练习",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 6.dp, start = 4.dp)
+            )
         }
 
-        // 分类列表 + 掌握度徽章
-        items(categories.size) { index ->
-            val category = categories[index]
-            val accuracy = viewModel.categoryAccuracy(category)
-            PressableGlass(
-                onClick = { viewModel.startCategory(category) },
-                shape = GlassShapes.card,
-                backdrop = backdrop,
-                dark = dark,
-                style = GlassStyle.Card,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Rounded.MenuBook,
-                        contentDescription = category,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            category,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Medium
-                        )
-                        // 掌握度条
-                        if (accuracy >= 0f) {
-                            Spacer(Modifier.height(5.dp))
-                            Box(
-                                Modifier
-                                    .fillMaxWidth(0.6f)
-                                    .height(4.dp)
-                                    .background(
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
-                                        RoundedCornerShape(2.dp)
-                                    )
-                            ) {
-                                Box(
-                                    Modifier
-                                        .fillMaxWidth(accuracy.coerceIn(0.04f, 1f))
-                                        .height(4.dp)
-                                        .background(
-                                            when {
-                                                accuracy >= 0.8f -> Color(0xFF4CAF50)
-                                                accuracy >= 0.6f -> Color(0xFFFFB300)
-                                                else -> Color(0xFFEF5350)
-                                            },
-                                            RoundedCornerShape(2.dp)
-                                        )
-                                )
-                            }
-                        }
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            "${viewModel.categoryCount(category)} 题",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (accuracy >= 0f) {
-                            Text(
-                                "${(accuracy * 100).toInt()}%",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = when {
-                                    accuracy >= 0.8f -> Color(0xFF4CAF50)
-                                    accuracy >= 0.6f -> Color(0xFFFFB300)
-                                    else -> Color(0xFFEF5350)
-                                }
-                            )
-                        }
-                    }
-                }
+        // ===== 分类两列网格（长度减半）=====
+        val rows = (categories.size + 1) / 2
+        items(rows) { rowIndex ->
+            val leftIdx = rowIndex * 2
+            val rightIdx = rowIndex * 2 + 1
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CategoryGridCell(
+                    backdrop, dark, viewModel,
+                    category = categories.getOrNull(leftIdx),
+                    modifier = Modifier.weight(1f)
+                )
+                CategoryGridCell(
+                    backdrop, dark, viewModel,
+                    category = categories.getOrNull(rightIdx),
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
 
@@ -387,7 +324,94 @@ fun HomeScreen(
             }
         }
 
-        item { Spacer(Modifier.height(28.dp)) }
+        item { Spacer(Modifier.navigationBarsPadding()) }
+    }
+}
+
+/** 分类网格单元（空位渲染占位）。 */
+@Composable
+private fun CategoryGridCell(
+    backdrop: Backdrop,
+    dark: Boolean,
+    viewModel: QuizViewModel,
+    category: String?,
+    modifier: Modifier = Modifier
+) {
+    if (category == null) {
+        Spacer(modifier)
+        return
+    }
+    val accuracy = viewModel.categoryAccuracy(category)
+    PressableGlass(
+        onClick = { viewModel.startCategory(category) },
+        shape = GlassShapes.card,
+        backdrop = backdrop,
+        dark = dark,
+        style = GlassStyle.Card,
+        modifier = modifier
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    category,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "${viewModel.categoryCount(category)}题",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            // 掌握度条（通栏）
+            if (accuracy >= 0f) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .background(
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f),
+                            RoundedCornerShape(2.dp)
+                        )
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(accuracy.coerceIn(0.04f, 1f))
+                            .height(4.dp)
+                            .background(
+                                when {
+                                    accuracy >= 0.8f -> Color(0xFF4CAF50)
+                                    accuracy >= 0.6f -> Color(0xFFFFB300)
+                                    else -> Color(0xFFEF5350)
+                                },
+                                RoundedCornerShape(2.dp)
+                            )
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "掌握 ${(accuracy * 100).toInt()}%",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = when {
+                        accuracy >= 0.8f -> Color(0xFF4CAF50)
+                        accuracy >= 0.6f -> Color(0xFFFFB300)
+                        else -> Color(0xFFEF5350)
+                    }
+                )
+            } else {
+                Text(
+                    "未开始",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+        }
     }
 }
 
@@ -414,39 +438,23 @@ private fun SearchField(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.width(10.dp))
-            Box(Modifier.weight(1f)) {
-                if (query.isEmpty()) {
-                    Text(
-                        "搜索题目 / 分类 / 关键词，回车开练",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                }
-                BasicTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-        // 提交按钮（点 GO 搜索）
-        if (query.isNotEmpty()) {
-            Box(
-                Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 8.dp)
-                    .clickable { onSearch(query) }
-            ) {
+            BasicTextField(
+                value = query,
+                onValueChange = { query = it },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            if (query.isNotEmpty()) {
+                Spacer(Modifier.width(8.dp))
                 Text(
                     "GO",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(8.dp)
+                    modifier = Modifier.clickable { onSearch(query) }
                 )
             }
         }
@@ -459,8 +467,7 @@ private fun StatsCard(
     dark: Boolean,
     totalAnswered: Int,
     totalCorrect: Int,
-    mistakes: Int,
-    bankSize: Int
+    mistakes: Int
 ) {
     val accuracy = if (totalAnswered == 0) "--" else "${(totalCorrect * 100 / totalAnswered)}%"
     Box(
@@ -474,7 +481,6 @@ private fun StatsCard(
             StatCell("已刷题数", "$totalAnswered", Modifier.weight(1f))
             StatCell("正确率", accuracy, Modifier.weight(1f))
             StatCell("错题", "$mistakes", Modifier.weight(1f))
-            StatCell("题库", "$bankSize", Modifier.weight(1f))
         }
     }
 }

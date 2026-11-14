@@ -7,6 +7,9 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,7 +40,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -45,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.Backdrop
 import com.wencui.quiz.QuizViewModel
@@ -53,13 +56,13 @@ import com.wencui.quiz.ui.components.PressableGlass
 import com.wencui.quiz.ui.glass.GlassShapes
 import com.wencui.quiz.ui.glass.GlassStyle
 import com.wencui.quiz.ui.glass.glassPanel
+import kotlinx.coroutines.delay
 
 /**
- * 答题页。
- * - 每次进入会话，所有题目的选项顺序独立随机（运行时乱序）
- * - 答题后展示每选项的详细解释（题库提供时）
- * - 收藏按钮随时可点亮
- * - 背题模式：不判分，直接翻看答案与解释
+ * 答题页（v2 布局）：
+ * - 顶栏瘦身：返回 / 进度 / 连击 / 收藏（分类与背题标记移入题目卡）
+ * - 内容区滚动：题目卡 + 选项 + 解析
+ * - 底部固定操作栏：「下一题」「看答案」常驻可见，无需滚到底
  */
 @Composable
 fun QuizScreen(
@@ -77,7 +80,6 @@ fun QuizScreen(
         if (state.chosenIndex != null) {
             val correct = state.chosenIndex == question.answerIndex
             if (correct) {
-                // combo 3/5/8 阶梯：多重 LongPress 模拟渐强
                 val pulses = when {
                     state.combo >= 8 -> 3
                     state.combo >= 5 -> 2
@@ -95,8 +97,10 @@ fun QuizScreen(
         }
     }
 
+    val answered = state.chosenIndex != null
+
     Column(modifier.fillMaxSize()) {
-        // 顶部：返回 + 进度 + 收藏
+        // ===== 顶栏（瘦身版）=====
         Row(
             Modifier
                 .statusBarsPadding()
@@ -118,13 +122,11 @@ fun QuizScreen(
             }
             Spacer(Modifier.width(12.dp))
             Text(
-                "${state.currentIndex + 1} / ${state.questions.size}" +
-                        (state.sessionCategory?.let { " · $it" } ?: "") +
-                        if (state.mode == SessionMode.Memorize) " · 背题" else "",
+                "${state.currentIndex + 1} / ${state.questions.size}",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f)
+                fontWeight = FontWeight.Bold
             )
+            Spacer(Modifier.weight(1f))
             // 连击火焰（combo >= 3 显示）
             if (state.combo >= 3) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -140,7 +142,7 @@ fun QuizScreen(
                         color = Color(0xFFFF7043)
                     )
                 }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(10.dp))
             }
             // 收藏按钮
             PressableGlass(
@@ -160,7 +162,7 @@ fun QuizScreen(
             }
         }
 
-        // 答题进度条
+        // ===== 答题进度条 =====
         Box(
             Modifier
                 .fillMaxWidth()
@@ -185,9 +187,10 @@ fun QuizScreen(
             )
         }
 
-        // 题目区（带切题动画）
+        // ===== 内容区（题目 + 选项 + 解析，可滚动）=====
         AnimatedContent(
             targetState = state.currentIndex,
+            modifier = Modifier.weight(1f),
             transitionSpec = {
                 if (targetState > initialState) {
                     (slideInHorizontally(tween(320)) { it / 3 } + fadeIn(tween(320)))
@@ -204,22 +207,40 @@ fun QuizScreen(
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
+                    // 题目卡：分类徽章 + 背题标记 + 题干
                     Box(
                         Modifier
                             .fillMaxWidth()
                             .glassPanel(backdrop, GlassShapes.card, GlassStyle.Card, dark)
                     ) {
-                        Column(Modifier.padding(22.dp)) {
-                            Text(
-                                q.category,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium
-                            )
+                        Column(Modifier.padding(20.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    q.category,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                if (state.mode == SessionMode.Memorize) {
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        "背题",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.tertiary,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier
+                                            .background(
+                                                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.14f),
+                                                RoundedCornerShape(6.dp)
+                                            )
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
                             Spacer(Modifier.height(10.dp))
                             Text(
                                 q.stem,
@@ -244,76 +265,90 @@ fun QuizScreen(
                     )
                 }
 
-                item { Spacer(Modifier.height(4.dp)) }
-
                 item {
-                    if (chosen != null) {
+                    // 解析（作答后展示）
+                    AnimatedVisibility(visible = chosen != null) {
                         Column {
-                            // 每选项解释（题库提供时逐项展示）
                             if (q.explanations.size == q.options.size) {
-                                ExplanationsCard(
-                                    backdrop, dark, q,
-                                    highlightIndex = chosen
-                                )
+                                ExplanationsCard(backdrop, dark, q, highlightIndex = chosen ?: 0)
                             } else if (q.defaultExplanation.isNotBlank()) {
                                 SimpleExplanationCard(
                                     backdrop, dark, q.defaultExplanation,
                                     chosen == q.answerIndex
                                 )
                             }
-                            Spacer(Modifier.height(12.dp))
-                            PressableGlass(
-                                onClick = { viewModel.next() },
-                                shape = GlassShapes.bar,
-                                backdrop = backdrop,
-                                dark = dark,
-                                style = GlassStyle.Button,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    if (state.isLastQuestion) "查看结算" else "下一题",
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 14.dp)
-                                )
-                            }
-                        }
-                    } else if (state.mode == SessionMode.Memorize) {
-                        // 背题模式：直接看答案按钮
-                        PressableGlass(
-                            onClick = { viewModel.revealAnswer() },
-                            shape = GlassShapes.bar,
-                            backdrop = backdrop,
-                            dark = dark,
-                            style = GlassStyle.Button,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                Modifier.padding(vertical = 14.dp).fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Lightbulb,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.tertiary
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    "看答案",
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.tertiary
-                                )
-                            }
                         }
                     }
                 }
 
-                item { Spacer(Modifier.navigationBarsPadding()) }
+                item { Spacer(Modifier.height(4.dp)) }
+            }
+        }
+
+        // ===== 底部固定操作栏 =====
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 10.dp)
+                .navigationBarsPadding()
+        ) {
+            AnimatedVisibility(
+                visible = answered,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                PressableGlass(
+                    onClick = { viewModel.next() },
+                    shape = GlassShapes.bar,
+                    backdrop = backdrop,
+                    dark = dark,
+                    style = GlassStyle.Button,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        if (state.isLastQuestion) "查看结算" else "下一题",
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp)
+                    )
+                }
+            }
+            // 背题模式：未作答时显示「看答案」
+            AnimatedVisibility(
+                visible = !answered && state.mode == SessionMode.Memorize,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                PressableGlass(
+                    onClick = { viewModel.revealAnswer() },
+                    shape = GlassShapes.bar,
+                    backdrop = backdrop,
+                    dark = dark,
+                    style = GlassStyle.Button,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        Modifier.padding(vertical = 14.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Rounded.Lightbulb,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "看答案",
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                }
             }
         }
     }
@@ -330,12 +365,10 @@ private fun OptionCard(
     isAnswer: Boolean,
     onClick: () -> Unit
 ) {
-    val shape = GlassShapes.button
-
     PressableGlass(
         onClick = onClick,
         enabled = !revealed,
-        shape = shape,
+        shape = GlassShapes.button,
         backdrop = backdrop,
         dark = dark,
         style = GlassStyle.Card,
