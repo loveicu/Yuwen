@@ -6,38 +6,36 @@ on:
     paths:
       - 'docs/**'
       - 'app/src/main/assets/question_bank.json'
+      - 'scripts/build_web.mjs'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: pages
+  group: gh-pages
   cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-        with:
-          # 首次运行自动为仓库启用 GitHub Pages（需 GITHUB_TOKEN 具备 pages 写权限，已声明）
-          enablement: true
+      - name: Build web
+        run: node scripts/build_web.mjs
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs
+      - name: Stage site
+        run: |
+          mkdir -p site
+          cp docs/index.html site/
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      # 发布到 gh-pages 分支（Pages 已配置为该分支模式，无需 Pages API 权限）
+      - name: Publish to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          force_orphan: false
