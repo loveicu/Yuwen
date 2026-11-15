@@ -113,12 +113,15 @@ fun WenCuiApp() {
                 context.applicationContext, url
             ) { p ->
                 context.mainExecutor.execute {
+                    // 仅在仍在下载态时刷新进度：用户中途关掉弹窗后不得再拉回
                     if (updateState is UpdateState.Downloading) {
                         updateState = UpdateState.Downloading(p)
                     }
                 }
             }
             context.mainExecutor.execute {
+                // 完成回调同样带状态守卫：弹窗已关则丢弃结果
+                if (updateState !is UpdateState.Downloading) return@execute
                 updateState = if (file != null) {
                     downloadedApk = file
                     UpdateState.Ready

@@ -27,8 +27,8 @@ android {
         applicationId = "com.wencui.quiz"
         minSdk = 26
         targetSdk = 36
-        versionCode = 17
-        versionName = "1.8.4"
+        versionCode = 18
+        versionName = "1.8.5"
     }
 
     buildTypes {

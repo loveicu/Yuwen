@@ -111,10 +111,14 @@ object ApkDownloader {
 
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 10000
-            readTimeout = 30000
+            readTimeout = 60000
             setRequestProperty("User-Agent", "WenCuiQuiz-App")
             instanceFollowRedirects = true
         }
+
+        // HTTP 状态码必须显式校验：否则 404 错误页会被当作 APK 写盘
+        val code = conn.responseCode
+        if (code != 200) throw IllegalStateException("HTTP $code")
 
         val total = conn.contentLengthLong.takeIf { it > 0 } ?: -1L
         var downloaded = 0L
@@ -129,6 +133,14 @@ object ApkDownloader {
                     downloaded += n
                     if (total > 0) onProgress((downloaded.toDouble() / total).toFloat())
                 }
+            }
+        }
+
+        // APK 魔数校验（PK\x03\x04）：防代理返回 HTML 错误页
+        tmp.inputStream().use { ins ->
+            val magic = ByteArray(2)
+            if (ins.read(magic) < 2 || magic[0] != 'P'.code.toByte() || magic[1] != 'K'.code.toByte()) {
+                throw IllegalStateException("下载内容不是有效的 APK")
             }
         }
 
