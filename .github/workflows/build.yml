@@ -40,6 +40,21 @@ jobs:
           mkdir -p release
           cp app/build/outputs/apk/release/app-release.apk "release/文萃刷题-v${{ steps.version.outputs.version }}.apk"
 
+      # 题库热更新资产：bank_override.json 与内置题库同构（version + questions）。
+      # meta.version 取题目内容的 SHA256 前 7 位十六进制转十进制（< 2^31），
+      # 题目一变版本自动变化，加题无需手动 bump version。
+      - name: Prepare bank assets
+        run: |
+          BANK_VERSION=$((16#$(jq -S '[.questions]' app/src/main/assets/question_bank.json | sha256sum | cut -c1-7)))
+          jq --argjson q "$(jq '.questions' app/src/main/assets/question_bank.json)" \
+             --argjson v "$BANK_VERSION" \
+             '{version: $v, questions: $q}' > release/bank_override.json
+          jq -n --argjson v "$BANK_VERSION" \
+             --argjson n "$(jq '.questions | length' app/src/main/assets/question_bank.json)" \
+             '{version: $v, fileName: "bank_override.json", questionCount: $n, notes: "content-hash"}' > release/bank_meta.json
+          echo "bank content version: $BANK_VERSION"
+          ls -la release/
+
       # 每次构建都更新「latest」release，供应用内更新系统检查
       - name: Delete existing release if exists
         run: |
@@ -56,7 +71,7 @@ jobs:
             自动构建于 ${{ github.event.head_commit.message }}
             
             > 通过应用内「检查更新」或直接下载安装。版本号以文件名为准。
-          files: release/*.apk
+          files: release/*
           token: ${{ secrets.GITHUB_TOKEN }}
           make_latest: true
 

@@ -139,7 +139,7 @@ html[data-theme="dark"] .blob { opacity:.38; }
 .racts .btn { flex:1; }
 
 .sp { padding:6px 4px 20px; }
-.lc { padding:16px; margin-bottom:12px; cursor:pointer; transition:transform .12s; }
+.lc { position:relative; padding:16px; margin-bottom:12px; cursor:pointer; transition:transform .12s; }
 .lc:active { transform:scale(.98); }
 .lc h4 { font-size:15px; font-weight:700; line-height:1.5; }
 .lc .meta { font-size:12.5px; color:var(--txt2); margin-top:6px; }
@@ -176,7 +176,7 @@ function save() { localStorage.setItem(P, JSON.stringify(S)); }
 
 const DEFAULTS = { totalAnswered:0, totalCorrect:0, bestCombo:0, lastDailyKey:'', streak:0, bestStreak:0, mistakeIds:[], favoriteIds:[], categoryStats:{} };
 let S = load() || { ...DEFAULTS };
-let UI = { screen:'home', cat:null, idx:0, picked:-1, answered:false, qids:[], answers:[], display:[], sessionId:0, searchGo:false, dailyDone:false, dailyScore:null };
+let UI = { screen:'home', cat:null, idx:0, picked:-1, answered:false, qids:[], answers:[], display:[], sessionId:0, combo:0, dailyDone:false, dailyScore:null };
 
 /* ================= 题库与分类 ================= */
 const byId = new Map((BANK ? BANK.questions : []).map(q => [q.id, q]));
@@ -200,11 +200,13 @@ function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { co
 function startQuiz(qids, label) {
   UI.qids = qids; UI.cat = label; UI.idx = 0; UI.picked = -1; UI.answered = false;
   UI.answers = qids.map(() => -1);
+  UI.combo = 0;
   UI.display = qids.map(id => { const q = byId.get(id); return { id, order: shuffle([0,1,2,3].filter(i => i < q.options.length)) }; });
   UI.sessionId++;
   UI.screen = 'quiz'; go();
 }
 function dailyKey() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function yesterdayKey() { const d = new Date(); d.setDate(d.getDate() - 1); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 function startDaily() {
   const qs = BANK.questions;
   let h = 0; for (const c of dailyKey()) h = (h * 31 + c.charCodeAt(0)) >>> 0;
@@ -229,7 +231,10 @@ function record(q, correct) {
   if (correct && mi >= 0) S.mistakeIds.splice(mi, 1);
   if (UI.cat === '每日一练' && UI.idx === UI.qids.length - 1 && !UI.dailyDone) {
     UI.dailyDone = true; UI.dailyScore = null;
-    S.lastDailyKey = dailyKey(); S.streak++; if (S.streak > S.bestStreak) S.bestStreak = S.streak;
+    // 断签清零：仅昨天打过卡才续签（与 App 的 settleDaily 一致，经 7 场景仿真验证）
+    S.streak = (S.lastDailyKey === yesterdayKey()) ? S.streak + 1 : 1;
+    S.lastDailyKey = dailyKey();
+    if (S.streak > S.bestStreak) S.bestStreak = S.streak;
   }
   save();
 }
@@ -250,7 +255,7 @@ function render() {
   if (scr === 'quiz') return renderQuiz();
   if (scr === 'result') return renderResult();
   if (scr === 'wrong') return renderList(S.mistakeIds, '错题本', '答对一道即可除名');
-  if (scr === 'fav') return renderList(S.favoriteIds, '收藏夹', '长按卡片取消收藏');
+  if (scr === 'fav') return renderList(S.favoriteIds, '收藏夹', '点卡片右上角 ☆ 取消收藏');
 }
 
 function renderHome() {
@@ -333,7 +338,7 @@ function renderQuiz() {
     <div class="qtop">
       <button class="icon-btn" id="b-back">←</button>
       <span class="pageno">${UI.idx + 1} / ${UI.qids.length}</span>
-      <span class="combo">🔥×${S.streak}</span>
+      <span class="combo">🔥×${UI.combo}</span>
       <button class="icon-btn" id="b-fav">${fav ? '⭐' : '☆'}</button>
     </div>
     <div class="qcard glass">
@@ -372,9 +377,15 @@ function renderQuiz() {
       el.onclick = () => {
         const pos = +el.dataset.pos;
         const oi = UI.display[UI.idx].order[pos];
+        const correct = oi === q.answerIndex;
         UI.picked = pos; UI.answered = true;
         UI.answers[UI.idx] = pos;
-        record(q, oi === q.answerIndex);
+        // 连击：答对 +1，答错清零（与 App 一致）
+        UI.combo = correct ? UI.combo + 1 : 0;
+        if (UI.combo > S.bestCombo) S.bestCombo = UI.combo;
+        // 触觉反馈（iOS Safari 不支持则静默跳过）
+        if (navigator.vibrate) navigator.vibrate(correct ? 15 : [30, 40, 30]);
+        record(q, correct);
         render();
       };
     });
@@ -431,12 +442,16 @@ function renderList(ids, title, hint) {
     ${qs.length ? '' : `<div class="empty">${title}还是空的<br><small style="font-size:12px">${hint}</small></div>`}
     ${qs.map(q => `<div class="lc glass" data-q="${q.id}">
       <h4>${esc(q.stem)}</h4>
-      <div class="meta">${esc(q.category)} · ${isFav(q.id) ? '⭐ 已收藏' : '点击查看 / 练习'}</div>
+      <div class="meta">${esc(q.category)} · 点击开练</div>
+      ${title === '收藏夹' ? `<button class="icon-btn ufav" data-id="${q.id}" style="position:absolute;right:10px;top:10px;width:30px;height:30px;font-size:13px">☆</button>` : ''}
     </div>`).join('')}
   </div>`;
   $('#b-back').onclick = () => { UI.screen = 'home'; go(); };
   const all = $('#b-all');
   if (all) all.onclick = () => startQuiz(qs.map(q => q.id), title);
+  app.querySelectorAll('.ufav').forEach(el => {
+    el.onclick = e => { e.stopPropagation(); toggleFav(+el.dataset.id); render(); };
+  });
   app.querySelectorAll('[data-q]').forEach(el => {
     el.onclick = () => startQuiz([+el.dataset.q], title);
   });
