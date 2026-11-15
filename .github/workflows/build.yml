@@ -22,6 +22,10 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          # 禁用跨 run 缓存：曾出现污染的增量编译缓存导致同代码稳定编译失败的案例，
+          # 本项目构建仅约 40 秒，稳定优先
+          cache-disabled: true
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
