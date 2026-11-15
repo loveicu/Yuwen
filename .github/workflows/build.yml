@@ -23,7 +23,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          # 禁用跨 run 缓存：曾出现污染的增量编译缓存导致同代码稳定编译失败的案例，
+          # 禁用跨 run 缓存：曾出现增量编译缓存污染导致同代码稳定失败，
           # 本项目构建仅约 40 秒，稳定优先
           cache-disabled: true
 
@@ -45,17 +45,22 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk "release/文萃刷题-v${{ steps.version.outputs.version }}.apk"
 
       # 题库热更新资产：bank_override.json 与内置题库同构（version + questions）。
-      # meta.version 取题目内容的 SHA256 前 7 位十六进制转十进制（< 2^31），
+      # meta.version 取题目内容的 SHA256 前 7 位十六进制转十进制（小于 2^31），
       # 题目一变版本自动变化，加题无需手动 bump version。
       - name: Prepare bank assets
         run: |
+          mkdir -p release
           BANK_VERSION=$((16#$(jq -S '[.questions]' app/src/main/assets/question_bank.json | sha256sum | cut -c1-7)))
-          jq --argjson q "$(jq '.questions' app/src/main/assets/question_bank.json)" \
+          # jq 必须加 -n（不读 stdin），否则 CI 空 stdin 会生成 0 字节文件
+          jq -n --argjson q "$(jq -c '.questions' app/src/main/assets/question_bank.json)" \
              --argjson v "$BANK_VERSION" \
              '{version: $v, questions: $q}' > release/bank_override.json
           jq -n --argjson v "$BANK_VERSION" \
              --argjson n "$(jq '.questions | length' app/src/main/assets/question_bank.json)" \
              '{version: $v, fileName: "bank_override.json", questionCount: $n, notes: "content-hash"}' > release/bank_meta.json
+          # 守卫：任一资产为空则快速失败，避免发布残缺 Release
+          [ -s release/bank_override.json ] || { echo "FATAL: bank_override.json 为空"; exit 1; }
+          [ -s release/bank_meta.json ] || { echo "FATAL: bank_meta.json 为空"; exit 1; }
           echo "bank content version: $BANK_VERSION"
           ls -la release/
 
