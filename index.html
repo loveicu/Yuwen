@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F7F3EA">
+<meta name="description" content="文萃刷题 · 语文文化常识刷题">
+<title>文萃刷题</title>
+<style>
+:root {
+  --qinghua: #1E88E5; --qinghua-deep: #1565C0;
+  --xuanzhi: #F7F3EA; --zhusha: #E53935;
+  --mohei: #263238;   --jinshi: #FFB300;
+  --panel: rgba(255,255,255,0.72);
+  --panel-strong: rgba(255,255,255,0.9);
+  --txt: #263238; --txt2: #5F6B73;
+  --gb: rgba(255,255,255,0.55);
+  --shadow: 0 8px 32px rgba(38,50,56,0.12);
+}
+html[data-theme="dark"] {
+  --panel: rgba(27,30,35,0.62);
+  --panel-strong: rgba(27,30,35,0.85);
+  --txt: #E4E2DE; --txt2: #BFC8CE;
+  --gb: rgba(255,255,255,0.10);
+  --shadow: 0 8px 32px rgba(0,0,0,0.35);
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body {
+  font-family: -apple-system, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  background: var(--xuanzhi); color: var(--txt);
+  min-height: 100dvh; overflow-x: hidden;
+  transition: background .5s, color .5s;
+}
+html[data-theme="dark"] body { background:#14161A; }
+
+/* 动态极光背景：与 App 同款李萨如光斑思路 */
+#bg { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+.blob { position:absolute; border-radius:50%; filter: blur(58px); opacity:.5; will-change:transform; }
+html[data-theme="dark"] .blob { opacity:.38; }
+@keyframes la { 0%{transform:translate(8vw,12vh) scale(1)} 33%{transform:translate(70vw,36vh) scale(1.25)} 66%{transform:translate(28vw,66vh) scale(.9)} 100%{transform:translate(8vw,12vh) scale(1)} }
+@keyframes lb { 0%{transform:translate(62vw,8vh) scale(1.15)} 33%{transform:translate(10vw,44vh) scale(.85)} 66%{transform:translate(66vw,72vh) scale(1.2)} 100%{transform:translate(62vw,8vh) scale(1.15)} }
+@keyframes lc { 0%{transform:translate(28vw,68vh) scale(1.1)} 40%{transform:translate(8vw,18vh) scale(.9)} 70%{transform:translate(56vw,24vh) scale(1.3)} 100%{transform:translate(28vw,68vh) scale(1.1)} }
+.ba { width:44vmax; height:44vmax; background:radial-gradient(circle,#42A5F5 0%,transparent 70%); animation:la 26s ease-in-out infinite; }
+.bb { width:40vmax; height:40vmax; background:radial-gradient(circle,#AB47BC 0%,transparent 70%); animation:lb 34s ease-in-out infinite; }
+.bc { width:36vmax; height:36vmax; background:radial-gradient(circle,#FFB300 0%,transparent 70%); animation:lc 30s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .blob { animation:none !important; } }
+
+.glass {
+  background: var(--panel);
+  backdrop-filter: blur(18px) saturate(1.6);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  border: 1px solid var(--gb);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+}
+#app { position:relative; z-index:1; max-width:640px; margin:0 auto; padding:14px 16px calc(28px + env(safe-area-inset-bottom)); }
+.fade-in { animation: fadeIn .26s ease; }
+@keyframes fadeIn { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
+
+.header { display:flex; align-items:center; justify-content:space-between; padding:10px 4px 16px; }
+.app-title { font-size:26px; font-weight:800; letter-spacing:1px; }
+.app-title .accent { color:var(--zhusha); }
+.icon-btn {
+  width:40px; height:40px; border:1px solid var(--gb); border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--panel); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  font-size:19px; color:var(--txt); cursor:pointer; transition:transform .12s;
+}
+.icon-btn:active { transform:scale(.9); }
+.icon-row { display:flex; gap:10px; }
+
+.stat-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+.stat { padding:14px 10px; text-align:center; }
+.stat .num { font-size:24px; font-weight:800; color:var(--qinghua); }
+.stat .num.red { color:var(--zhusha); } .stat .num.amber { color:#F59E0B; }
+.stat .label { font-size:12px; color:var(--txt2); margin-top:2px; }
+
+.daily { padding:18px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.daily h3 { font-size:17px; font-weight:700; }
+.daily p { font-size:13px; color:var(--txt2); margin-top:3px; }
+.btn {
+  border:none; border-radius:14px; padding:11px 22px; font-size:15px; font-weight:700;
+  background:linear-gradient(135deg, var(--qinghua), var(--qinghua-deep));
+  color:#fff; cursor:pointer; transition:transform .12s, opacity .2s;
+  box-shadow:0 4px 14px rgba(30,136,229,.35); white-space:nowrap;
+}
+.btn:active { transform:scale(.96); }
+.btn.sec { background:var(--panel-strong); color:var(--txt); box-shadow:none; border:1px solid var(--gb); }
+.btn:disabled { opacity:.55; }
+
+.search-row { display:flex; gap:10px; margin-bottom:16px; }
+.search-row input {
+  flex:1; min-width:0; border:1px solid var(--gb); border-radius:14px; padding:11px 16px;
+  background:var(--panel); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  font-size:15px; color:var(--txt); outline:none;
+}
+.search-row input::placeholder { color:var(--txt2); }
+.cat-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.cat { padding:16px; cursor:pointer; transition:transform .12s; }
+.cat:active { transform:scale(.97); }
+.cat h4 { font-size:16px; font-weight:700; }
+.cat .meta { font-size:12.5px; color:var(--txt2); margin-top:5px; }
+.meter { height:6px; background:rgba(128,140,153,.15); border-radius:3px; margin-top:10px; overflow:hidden; }
+.meter > i { display:block; height:100%; border-radius:3px; transition:width .5s; }
+
+.qtop { display:flex; align-items:center; gap:10px; padding:8px 4px 14px; }
+.qtop .icon-btn { width:36px; height:36px; font-size:17px; }
+.pageno { font-weight:700; font-size:15px; color:var(--txt2); }
+.combo { margin-left:auto; font-weight:800; color:var(--zhusha); font-size:15px; }
+.qcard { padding:20px; }
+.qcat { font-size:12.5px; font-weight:700; color:var(--qinghua); }
+.qstem { font-size:17px; font-weight:700; line-height:1.6; margin-top:8px; }
+.opts { display:flex; flex-direction:column; gap:11px; margin-top:16px; }
+.opt {
+  padding:13px 16px; border-radius:15px; border:1.5px solid var(--gb);
+  background:var(--panel); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  font-size:15px; line-height:1.55; cursor:pointer; transition:all .2s; text-align:left;
+  color:var(--txt); font-family:inherit;
+}
+.opt .tag { font-weight:800; margin-right:8px; color:var(--qinghua); }
+.opt.correct { border-color:var(--qinghua); background:rgba(30,136,229,.12); }
+.opt.wrong { border-color:var(--zhusha); background:rgba(229,57,53,.10); }
+.opt.dim { opacity:.55; }
+.explain { margin-top:14px; padding:14px 16px; border-radius:15px; background:var(--panel-strong); border:1px solid var(--gb); font-size:14px; line-height:1.7; }
+.explain .verdict { font-weight:800; margin-bottom:6px; }
+.explain .verdict.ok { color:#2E7D32; } .explain .verdict.no { color:var(--zhusha); }
+.explain .line { margin:6px 0; }
+.explain .line b { margin-right:4px; }
+.qacts { display:flex; gap:12px; margin-top:18px; }
+.qacts .btn { flex:1; padding:13px; font-size:16px; }
+
+.rcard { padding:28px 22px; text-align:center; }
+.rcard .emoji { font-size:52px; }
+.rcard h2 { margin-top:10px; font-size:22px; }
+.rscore { font-size:44px; font-weight:900; color:var(--qinghua); margin-top:12px; }
+.rscore small { font-size:16px; color:var(--txt2); font-weight:600; }
+.rsub { color:var(--txt2); font-size:14px; margin-top:8px; }
+.racts { display:flex; gap:12px; margin-top:22px; }
+.racts .btn { flex:1; }
+
+.sp { padding:6px 4px 20px; }
+.lc { padding:16px; margin-bottom:12px; cursor:pointer; transition:transform .12s; }
+.lc:active { transform:scale(.98); }
+.lc h4 { font-size:15px; font-weight:700; line-height:1.5; }
+.lc .meta { font-size:12.5px; color:var(--txt2); margin-top:6px; }
+
+.ov { position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; padding:20px; }
+.dlg {
+  width:100%; max-width:400px; padding:22px;
+  background:var(--panel-strong); backdrop-filter:blur(24px) saturate(1.6); -webkit-backdrop-filter:blur(24px) saturate(1.6);
+  border:1px solid var(--gb); border-radius:24px; box-shadow:0 16px 48px rgba(0,0,0,.25);
+  animation: fadeIn .22s ease;
+}
+.dlg h3 { font-size:19px; font-weight:800; }
+.dlg .sub { color:var(--qinghua); font-weight:600; font-size:14px; margin-top:5px; }
+.dlg .notes { color:var(--txt2); font-size:13.5px; line-height:1.65; margin-top:10px; max-height:140px; overflow:auto; white-space:pre-wrap; }
+.dacts { display:flex; gap:10px; margin-top:18px; }
+.dacts .btn { flex:1; }
+.empty { text-align:center; color:var(--txt2); padding:48px 0; font-size:15px; }
+</style>
+</head>
+<body>
+<div id="bg"><div class="blob ba"></div><div class="blob bb"></div><div class="blob bc"></div></div>
+<div id="app"></div>
+<script>
+const BANK = {"version":1,"questions":[{"id":1,"category":"科举制度","stem":"\"连中三元\"中的\"三元\"依次指的是哪三次考试的第一名？","options":["会试、殿试、朝考","童试、乡试、会试","乡试、会试、殿试","县试、府试、院试"],"answerIndex":2,"explanation":"三元即解元（乡试第一）、会元（会试第一）、状元（殿试第一）。","explanations":["乡试第一为解元、会试第一为会元、殿试第一为状元，三者连得即「连中三元」","县试、府试、院试是科举入门的「童试」三级，通过后仅成为秀才","童试是取得生员（秀才）资格的考试，不在「三元」之列","朝考是清代殿试后授予官职的考试，与三元无关"]},{"id":2,"category":"科举制度","stem":"古代科举中，殿试第一名称为什么？","options":["榜眼","状元","解元","探花"],"answerIndex":1,"explanation":"殿试前三名依次为状元、榜眼、探花，合称\"三鼎甲\"。","explanations":["状元是殿试一甲第一名，如文天祥、张謇","榜眼是殿试一甲第二名","探花是殿试一甲第三名","解元是乡试第一名，殿试前还需过会试"]},{"id":3,"category":"科举制度","stem":"\"十年寒窗无人问，一举成名天下知\"描写的是哪种考试的情景？","options":["武术比试","诗词大赛","科举考试","太学考核"],"answerIndex":2,"explanation":"此句出自元代高明《琵琶记》，描写科举考生苦读后一举中第。","explanations":["此句出自高明《琵琶记》，写科举寒窗苦读与一举成名","武术比试与「寒窗」「成名天下知」语境不符","诗词大赛是文学活动，非「一举成名」的制度性通道","太学考核是入学考试，不是天下知的国家大考"]},{"id":4,"category":"科举制度","stem":"明清时期，通过乡试的人被称为？","options":["贡士","秀才","进士","举人"],"answerIndex":3,"explanation":"童试合格为秀才，乡试合格为举人，会试合格为贡士，殿试合格为进士。","explanations":["乡试合格称举人，获得做官资格，第一名称解元","秀才是童试合格者，尚未取得乡试资格","贡士是会试合格者，介于举人与进士之间","进士是殿试合格者，科举最高功名"]},{"id":5,"category":"科举制度","stem":"\"范进中举\"中的\"中举\"指的是通过了哪一级考试？","options":["会试","院试","殿试","乡试"],"answerIndex":3,"explanation":"范进通过乡试成为举人，出自《儒林外史》。","explanations":["范进参加乡试中举，出自《儒林外史》讽刺名篇","会试在乡试之后，范进中举时尚未参加","殿试是最高一级，需先过会试","院试是童试的一级，通过者为秀才"]},{"id":6,"category":"古代称谓","stem":"古代\"而立之年\"指的是多少岁？","options":["五十岁","二十岁","三十岁","四十岁"],"answerIndex":2,"explanation":"三十而立，四十不惑，五十知天命，六十耳顺，七十从心所欲。","explanations":["「三十而立」出自《论语·为政》，指三十岁能自立于世","二十岁为「弱冠」（男子行冠礼）","四十岁为「不惑」，指明辨事理不迷惑","五十岁为「知天命」"]},{"id":7,"category":"古代称谓","stem":"\"垂髫\"指的是什么？","options":["老年妇女","成年男子","幼年儿童","已婚女子"],"answerIndex":2,"explanation":"古时儿童不束发，头发下垂，故以\"垂髫\"代指儿童。","explanations":["古时儿童不束发，头发下垂称「垂髫」，如陶渊明「黄发垂髫」","成年男子束发戴冠，称「弱冠」或「束发」","老年妇女无「垂髫」之说，老年称「黄发」","已婚女子梳髻，与儿童披发不同"]},{"id":8,"category":"古代称谓","stem":"古人称自己的妻子为\"拙荆\"，\"荆\"本义是什么？","options":["一种香料","荆条枝，指荆钗布裙","一种宝石","一种织物"],"answerIndex":1,"explanation":"\"拙荆\"源自东汉梁鸿妻孟光\"荆钗布裙\"，谦称自己的妻子。","explanations":["荆即荆条枝，孟光「荆钗布裙」以荆枝为钗，后世谦称己妻为拙荆","荆不是宝石，这是一种以物代人的谦称","荆非香料，此说无典故依据","荆非织物，来源是荆钗（头饰）"]},{"id":9,"category":"古代称谓","stem":"\"豆蔻年华\"指女子多少岁？","options":["十三四岁","十七八岁","十五六岁","二十岁"],"answerIndex":0,"explanation":"出自杜牧\"豆蔻梢头二月初\"，指女子十三四岁。","explanations":["杜牧「豆蔻梢头二月初」以二月豆蔻喻十三四岁少女","十五六岁为「及笄」前后（女子十五束发）","十七八岁无特定专称","女子二十岁为「桃李年华」"]},{"id":10,"category":"古代称谓","stem":"古代兄弟排行\"伯、仲、叔、季\"中，\"季\"表示？","options":["排行最大","排行第三","排行最小","排行第二"],"answerIndex":2,"explanation":"伯为长，仲为次，叔为三，季为幼。","explanations":["伯仲叔季由长到幼，「季」为最幼，如「季军」第三却源于古义引申","排行最大为「伯」，如「伯父」","排行第二为「仲」，如孔子字仲尼","排行第三为「叔」，如「叔父」"]},{"id":11,"category":"天文历法","stem":"\"七月流火\"中的\"火\"指的是什么？","options":["太阳","火灾","火星","心宿二（大火星）"],"answerIndex":3,"explanation":"\"流火\"指大火星（心宿二）西行，是天气转凉的信号，不是形容天气炎热。","explanations":["「火」指心宿二（大火星），其西移预示天气转凉","火星是行星，古称「荧惑」，与此无关","「流火」与火灾无关，是天文观察","太阳非「流火」所指，此为恒星心宿二"]},{"id":12,"category":"天文历法","stem":"古代用于记录时间的\"干支\"共有多少个？","options":["60个组合","12个","10个","22个字"],"answerIndex":3,"explanation":"天干10个（甲乙丙丁戊己庚辛壬癸），地支12个（子丑寅卯辰巳午未申酉戌亥），组合成60干支。","explanations":["天干10与地支12，最小公倍数为60，故一甲子六十年","10只是天干个数，干支是组合系统","12只是地支个数，干支是组合系统","22是天干加地支的总字数，但干支纪年以60为周期"]},{"id":13,"category":"天文历法","stem":"\"二十四节气\"中，表示昼夜平分的两个节气是？","options":["立春和立秋","春分和秋分","惊蛰和芒种","夏至和冬至"],"answerIndex":1,"explanation":"春分、秋分时太阳直射赤道，全球昼夜等长。","explanations":["春分、秋分太阳直射赤道，昼夜均分","立春立秋是季节起点，昼夜不等长","夏至日最长、冬至日最短，恰是极端","惊蛰芒种反映物候农事，与昼夜无关"]},{"id":14,"category":"天文历法","stem":"农历每月十五的月相称为？","options":["望","朔","晦","弦"],"answerIndex":0,"explanation":"初一为朔（新月），十五为望（满月），月末为晦。","explanations":["农历十五月满称「望」，如「望月」","朔是初一新月，月不可见","晦是月末最后一天，月隐","弦指初七八（上弦）与廿二三（下弦），半月之相"]},{"id":15,"category":"天文历法","stem":"\"参商\"一词比喻亲友分离不得相见，\"参\"与\"商\"是？","options":["两颗此出彼没的星","两种乐器","两座山","两条河流"],"answerIndex":0,"explanation":"参星与商星（心宿）在天空中此出彼没，永不同现，故喻分离。","explanations":["参星在西、商星（心宿）在东，此出彼没永不同现","参商是星宿不是乐器，乐器之喻无据","参商是星宿不是河流","参商是星宿不是山岳"]},{"id":16,"category":"礼仪风俗","stem":"古代\"弱冠之年\"指男子多少岁？","options":["二十二岁","十五岁","十八岁","二十岁"],"answerIndex":3,"explanation":"男子二十岁行冠礼，表示成年，因体犹未壮故称\"弱冠\"。","explanations":["男子二十行冠礼，体犹未壮故称「弱冠」","十八岁无专称，非古代成年礼年龄","十五岁为「束发」（男）或「及笄」（女）","二十二岁已过冠礼，不称弱冠"]},{"id":17,"category":"礼仪风俗","stem":"\"稽首\"是古代哪种礼节？","options":["作揖","握手","点头示意","跪拜礼中最重的一种"],"answerIndex":3,"explanation":"稽首为叩头至地，是臣对君、子对父的最重礼节。","explanations":["稽首叩头至地，为最重礼，臣对君、子对父用之","作揖是拱手礼，轻于叩拜","握手是现代礼节，古代无此礼","点头示意是轻礼，非正式跪拜"]},{"id":18,"category":"礼仪风俗","stem":"古人座次中，\"虚左\"表示什么？","options":["撤掉左边座椅","空出左位以示尊贵","左边座位不坐人","把左边让给小孩"],"answerIndex":1,"explanation":"古代车骑以左为尊，\"虚左\"表示对客人的尊敬，出自《信陵君窃符救赵》。","explanations":["古代车骑以左为尊，空左位待客表尊敬（信陵君虚左）","虚左与孩童无关，是对尊客之礼","虚左正是留左位给人坐，非不坐人","虚左是空出位置，不是撤掉座椅"]},{"id":19,"category":"礼仪风俗","stem":"\"金榜题名\"中的\"金榜\"指的是？","options":["悬赏公告","朝廷官员名录","皇家族谱","殿试录取名单"],"answerIndex":3,"explanation":"科举殿试后朝廷用黄纸（金纸）公布录取名单，故称金榜。","explanations":["殿试后以黄纸（金纸）张榜公布录取名单，称金榜","皇家族谱称「玉牒」","官员名录称「缙绅录」等，非金榜","悬赏公告与科举无关"]},{"id":20,"category":"礼仪风俗","stem":"传统婚礼中\"结发夫妻\"的\"结发\"指？","options":["染发","成婚之夕各剪一缕头发相结","梳成发髻","用发带束发"],"answerIndex":1,"explanation":"成婚之夜新婚男女各剪下一缕头发绾结在一起，象征永不分离，故原配夫妻称结发夫妻。","explanations":["成婚之夜各剪一缕头发绾结一起，喻永不分离，故称结发夫妻","束发是成年礼，与婚姻无关","梳髻是日常发型，非结发夫妻本义","染发与典故无关"]},{"id":21,"category":"文学典籍","stem":"\"四书\"指的是哪四部书？","options":["《春秋》《左传》《公羊传》《谷梁传》","《大学》《中庸》《论语》《孟子》","《诗经》《尚书》《礼记》《周易》","《论语》《孟子》《荀子》《墨子》"],"answerIndex":1,"explanation":"四书由朱熹编定；\"五经\"则是诗、书、礼、易、春秋。","explanations":["朱熹编定《大学》《中庸》《论语》《孟子》为四书","此为「五经」中的几部（诗经尚书礼记周易）","此为「春秋三传」，属注疏类","荀子墨子属诸子，不在四书"]},{"id":22,"category":"文学典籍","stem":"\"五经\"不包括以下哪一部？","options":["《孟子》","《尚书》","《周易》","《诗经》"],"answerIndex":0,"explanation":"五经为《诗》《书》《礼》《易》《春秋》，《孟子》属四书。","explanations":["《孟子》属四书，不在五经之列","《诗经》为五经之首","《尚书》为五经之一","《周易》为五经之一"]},{"id":23,"category":"文学典籍","stem":"我国第一部诗歌总集是？","options":["《楚辞》","《全唐诗》","《乐府诗集》","《诗经》"],"answerIndex":3,"explanation":"《诗经》收录西周至春秋诗歌305篇，分风、雅、颂三部分。","explanations":["《诗经》收录西周至春秋诗305篇，是我国第一部诗歌总集","《楚辞》是第一部文人诗集（屈原），晚于诗经","《乐府诗集》为宋人辑录的乐府总集","《全唐诗》为清编唐诗总集"]},{"id":24,"category":"文学典籍","stem":"\"风、雅、颂、赋、比、兴\"合称\"六义\"，其中\"赋、比、兴\"是？","options":["祭祀仪式","表现手法","乐器名称","诗歌类型"],"answerIndex":1,"explanation":"风雅颂是诗的类型，赋比兴是表现手法：赋直陈、比比喻、兴托物起兴。","explanations":["赋比兴是表现手法：赋直陈、比比喻、兴托物起兴","风雅颂才是诗歌类型，赋比兴不是","六义与乐器无关","六义非祭祀仪式，是诗学概念"]},{"id":25,"category":"文学典籍","stem":"\"史家之绝唱，无韵之《离骚》\"是鲁迅对哪部书的评价？","options":["《汉书》","《史记》","《资治通鉴》","《战国策》"],"answerIndex":1,"explanation":"鲁迅评价司马迁《史记》，肯定其史学与文学双重价值。","explanations":["鲁迅誉《史记》为「史家之绝唱，无韵之离骚」","《汉书》为断代史，未获此评","《资治通鉴》为编年体，无此评","《战国策》为国别体史书"]},{"id":26,"category":"文学典籍","stem":"\"四书五经\"中的\"五经\"是在\"四书\"之前还是之后编定的？","options":["无法考证","同时编定","之前，先秦已有","之后，宋代编定"],"answerIndex":2,"explanation":"五经源于先秦儒家经典；四书是南宋朱熹编定的。","explanations":["五经先秦已有，四书是南宋朱熹编定，故五经在前","四书编定于宋，五经非宋编","二者编定时间不同","五经传承脉络清晰可考"]},{"id":27,"category":"文学典籍","stem":"《资治通鉴》是一部什么性质的著作？","options":["纪事本末体史书","编年体通史","断代史","纪传体通史"],"answerIndex":1,"explanation":"司马光主编的编年体通史，记载战国至五代1362年史事。","explanations":["《资治通鉴》为司马光主编的编年体通史，记1362年史事","纪传体通史是《史记》，体例不同","纪事本末体以事件为纲，如《通鉴纪事本末》","断代史记一朝，如《汉书》记西汉"]},{"id":28,"category":"地理名胜","stem":"\"江南三大名楼\"指的是？","options":["黄鹤楼、岳阳楼、滕王阁","岳阳楼、滕王阁、蓬莱阁","黄鹤楼、岳阳楼、蓬莱阁","黄鹤楼、鹳雀楼、滕王阁"],"answerIndex":0,"explanation":"黄鹤楼（武汉）、岳阳楼（岳阳）、滕王阁（南昌），各有名篇传世。","explanations":["黄鹤楼（武汉）、岳阳楼（岳阳）、滕王阁（南昌）并称江南三大名楼","鹳雀楼在山西，不属「江南」三大名楼","蓬莱阁在山东，不在此列","组合中含非江南的楼，不合定义"]},{"id":29,"category":"地理名胜","stem":"\"欲穷千里目，更上一层楼\"中的\"楼\"指的是？","options":["滕王阁","黄鹤楼","岳阳楼","鹳雀楼"],"answerIndex":3,"explanation":"王之涣《登鹳雀楼》，鹳雀楼在今山西永济。","explanations":["王之涣《登鹳雀楼》，楼在山西永济","黄鹤楼为崔颢题诗之楼","岳阳楼为范仲淹《岳阳楼记》","滕王阁为王勃《滕王阁序》"]},{"id":30,"category":"地理名胜","stem":"\"五岳\"中的\"中岳\"指哪座山？","options":["泰山","恒山","华山","嵩山"],"answerIndex":3,"explanation":"五岳：东岳泰山、西岳华山、南岳衡山、北岳恒山、中岳嵩山。","explanations":["中岳嵩山在河南登封，少林寺所在","泰山为东岳（山东）","华山为西岳（陕西）","恒山为北岳（山西）"]},{"id":31,"category":"地理名胜","stem":"古人说的\"中原\"大致指今天的哪个区域？","options":["黄河中下游地区","四川盆地","长江三角洲","珠江流域"],"answerIndex":0,"explanation":"中原指黄河中下游平原，中华文明的重要发源地。","explanations":["中原指黄河中下游平原，华夏文明发源地","长江三角洲在南方，非中原","四川盆地古称「天府」，非中原","珠江流域在岭南，非中原"]},{"id":32,"category":"地理名胜","stem":"\"天府之国\"指的是？","options":["河套平原","关中平原","江南水乡","四川盆地"],"answerIndex":3,"explanation":"成都平原沃野千里，自古称\"天府之国\"。","explanations":["成都平原沃野千里，秦时李冰修都江堰后称天府之国","关中平原称「八百里秦川」","江南水乡称「鱼米之乡」","河套平原称「塞上江南」"]},{"id":33,"category":"官职科举","stem":"古代\"拜把子\"\"结拜\"时说的\"八拜之交\"，\"八拜\"本义是？","options":["八种武术礼","八字合同","拜八次","对八位长辈的礼节"],"answerIndex":3,"explanation":"八拜原指对父辈友人的礼节，后演变为异姓结拜的代称。","explanations":["八拜原指对父辈友人各行其礼，后为结拜代称","不是拜八次，是八类长辈之礼的引申","与武术无关","无「八字合同」之说"]},{"id":34,"category":"官职科举","stem":"\"告老还乡\"中的\"告老\"是官员的什么行为？","options":["辞官隐居","告假省亲","申请退休","请假回家"],"answerIndex":2,"explanation":"古代官员年老请求退休称\"告老\"或\"乞骸骨\"。","explanations":["官员年老请求退休称「告老」或「乞骸骨」","请假回家为「告假」或「归省」","辞官隐居为「挂冠」「归隐」","告假省亲是短期探亲，非退休"]},{"id":35,"category":"官职科举","stem":"古代\"三省六部制\"中的\"三省\"指？","options":["门下省、内侍省、秘书省","中书省、枢密院、御史台","中书省、门下省、尚书省","尚书省、御史台、枢密院"],"answerIndex":2,"explanation":"三省分工：中书决策、门下审议、尚书执行；尚书省下设六部。","explanations":["三省：中书决策、门下审议、尚书执行","御史台是监察机构，枢密院掌军事","组合含非省机构","内侍省、秘书省不在核心三省"]},{"id":36,"category":"官职科举","stem":"\"司空见惯\"中的\"司空\"原本是？","options":["地名","书名","人名","官职名"],"answerIndex":3,"explanation":"司空是古代官职，典出刘禹锡诗\"司空见惯浑闲事\"。","explanations":["司空为古代三公之一（后为工部尚书别称），官职名","不是人名，是官职","不是地名","不是书名"]},{"id":37,"category":"官职科举","stem":"古代表示\"授予官职\"的词是？","options":["拜","谪","迁","除"],"answerIndex":3,"explanation":"\"拜\"和\"除\"都表示授予官职；\"迁\"指调职（多为升迁），\"谪\"指降职远调。","explanations":["「除」为授予官职，如「除臣洗马」（《陈情表》）","「拜」也是授职，但本题最佳答案为除；拜多用于初次封授","「迁」指调动（多升迁），非初授","「谪」指降职远调"]},{"id":38,"category":"神话传说","stem":"神话中\"开天辟地\"的是哪位？","options":["盘古","共工","伏羲","女娲"],"answerIndex":0,"explanation":"盘古开天辟地，女娲抟土造人、炼石补天。","explanations":["盘古开天辟地，身化山川万物","女娲造人补天，非开天","伏羲画八卦，创八卦文字","共工怒触不周山，致天倾西北"]},{"id":39,"category":"神话传说","stem":"\"精卫填海\"中精卫是神农之女溺亡后所化，它是什么形象？","options":["蛇","鹿","鱼","鸟"],"answerIndex":3,"explanation":"女娃溺于东海化为精卫鸟，衔西山木石以填东海，出自《山海经》。","explanations":["女娃溺亡化精卫鸟，衔木石填海","精卫是鸟非鱼","精卫是鸟非蛇","精卫是鸟非鹿"]},{"id":40,"category":"神话传说","stem":"\"八仙过海\"故事中，八仙渡海用的是？","options":["一座桥","龙的背","同一艘船","各自的法宝"],"answerIndex":3,"explanation":"八仙各显神通：铁拐李的葫芦、汉钟离的扇子、张果老骑纸驴等。","explanations":["八仙各持法宝渡海：葫芦、扇子、纸驴、玉板等","不是同乘一船，正因各显神通","没有桥，海面无桥可渡","不是乘龙，龙是龙王属相"]},{"id":41,"category":"神话传说","stem":"\"四灵\"指古代象征祥瑞的四种动物，不包括？","options":["麒麟","凤","狼","龙"],"answerIndex":2,"explanation":"四灵为龙、凤、龟、麟（一说加白虎、朱雀等组成四象/祥瑞体系），狼不在其中。","explanations":["四灵为龙、凤、龟、麟，狼不在其列","龙在四灵","凤在四灵","（此项为正确答案）狼不在四灵之列"]},{"id":42,"category":"音乐律历","stem":"古代\"五音\"（五声）指的是？","options":["哆、来、咪、发、嗦","宫、商、角、徵、羽","金、石、丝、竹、匏","黄钟、大吕、太簇、夹钟、姑洗"],"answerIndex":1,"explanation":"五音即宫商角徵羽，相当于do re mi sol la；\"五音不全\"由此而来。","explanations":["宫商角徵羽为五音，相当于do re mi sol la","金石丝竹匏是「八音」乐器分类","哆来咪发嗦是现代唱名，非古五音","黄钟大吕等是十二律名，非五音"]},{"id":43,"category":"音乐律历","stem":"\"高山流水\"典故与哪两位相关？","options":["伯牙与钟子期","李龟年与杜甫","嵇康与阮籍","司马相如与卓文君"],"answerIndex":0,"explanation":"伯牙鼓琴，钟子期善听，子期死，伯牙终身不复鼓琴，喻知音难觅。","explanations":["伯牙鼓琴、钟子期知音，「高山流水」喻知音难觅","司马相如「凤求凰」追求卓文君","嵇康善《广陵散》，与阮籍同属竹林七贤","李龟年是宫廷乐师，杜甫有「江南逢李龟年」"]},{"id":44,"category":"音乐律历","stem":"\"阳春白雪\"与\"下里巴人\"最初分别比喻？","options":["两座城池","冬夏的衣服","富贵与贫穷","高雅与通俗的乐曲"],"answerIndex":3,"explanation":"出自宋玉《对楚王问》，曲高和寡者为阳春白雪，通俗流行者为下里巴人。","explanations":["阳春白雪喻高雅艺术，下里巴人喻通俗作品","与衣服无关，本为楚国歌曲名","与贫富无关，是艺术雅俗之分","是两首楚国歌曲名，非城池"]},{"id":45,"category":"音乐律历","stem":"\"四面楚歌\"的\"楚歌\"是哪一地区的歌谣？","options":["齐地","楚地（今湖北湖南一带）","燕地","秦地"],"answerIndex":1,"explanation":"垓下之围中汉军唱楚地歌谣瓦解楚军士气，项羽自刎乌江。","explanations":["楚地约今湖北湖南一带，楚歌瓦解楚军士气","齐地在山东，非楚歌来源","燕地在河北北部，非楚歌来源","秦地在陕西，是汉军一方"]},{"id":46,"category":"节日时令","stem":"\"遍插茱萸少一人\"描写的是哪个节日？","options":["元宵节","重阳节","中秋节","端午节"],"answerIndex":1,"explanation":"王维《九月九日忆山东兄弟》，重阳节有登高、插茱萸的习俗。","explanations":["王维《九月九日忆山东兄弟》，重阳登高插茱萸","端午插艾草菖蒲，非茱萸","中秋赏月吃月饼，无插茱萸俗","元宵观灯吃元宵，无插茱萸俗"]},{"id":47,"category":"节日时令","stem":"元宵节赏灯习俗与佛教\"燃灯礼佛\"相关，始于哪个朝代盛行？","options":["明代","唐代","宋代","汉代"],"answerIndex":3,"explanation":"汉明帝下令正月十五燃灯礼佛，此后元宵张灯成俗，唐宋大盛。","explanations":["汉明帝敕令正月十五燃灯礼佛，元宵张灯自此始","唐代元宵大盛但非始","宋代灯市繁华但非始","明代灯节延长但非始"]},{"id":48,"category":"节日时令","stem":"\"清明前后，种瓜点豆\"说明清明是？","options":["宗教节日","节气与节日合一的日子","纯粹的传统节日","祭祀神灵的节日"],"answerIndex":1,"explanation":"清明既是二十四节气之一，又是祭祖扫墓的传统节日。","explanations":["清明既是节气（农事）又是节日（祭扫），节气节日合一","不只是节日，也是重要节气","非宗教节日，是民俗节日","祭祖扫墓为主，非祭祀神灵"]},{"id":49,"category":"节日时令","stem":"端午节的主要习俗不包括？","options":["挂艾草","赏月","吃粽子","赛龙舟"],"answerIndex":1,"explanation":"赏月是中秋节习俗；端午节纪念屈原，有龙舟、粽子、艾草等习俗。","explanations":["赏月是中秋习俗，端午无此俗","赛龙舟是端午标志性活动","吃粽子纪念屈原，端午核心习俗","挂艾草菖蒲驱邪，端午习俗"]},{"id":50,"category":"称谓避讳","stem":"古人\"避讳\"制度中，不能直呼？","options":["君主和尊长的名字","自己的名字","同辈的名字","敌人的名字"],"answerIndex":0,"explanation":"避国君之名谓\"国讳\"，避父祖之名谓\"家讳\"，写文章时要改字或缺笔。","explanations":["避国讳（君）与家讳（父祖），不得直书其名","自己的名字可自用，非避讳对象","同辈名字无避讳要求","敌人名字更无需避讳"]},{"id":51,"category":"称谓避讳","stem":"古人谦称自己用\"愚\"，尊称对方用？","options":["鄙人、小生","竖子、匹夫","仆、不才","君、公、足下"],"answerIndex":3,"explanation":"尊称对方常用君、公、卿、足下、先生等；仆、鄙人为谦称。","explanations":["尊称对方用君、公、卿、足下、先生","仆、不才是谦称非尊称","鄙人、小生是谦称","竖子、匹夫是骂语"]},{"id":52,"category":"称谓避讳","stem":"\"令尊\"是对谁的尊称？","options":["对方的母亲","自己的儿子","自己的父亲","对方的父亲"],"answerIndex":3,"explanation":"令尊（父）、令堂（母）、令兄（兄）、令郎（子）都是称对方亲属的敬辞。","explanations":["令尊尊称对方父亲，「令」表美好","对方母亲称令堂","自己父亲称家父（谦称）","自己儿子称犬子（谦称）"]},{"id":53,"category":"称谓避讳","stem":"古代对死的称呼中，\"崩\"专用于？","options":["平民之死","诸侯之死","天子之死","大夫之死"],"answerIndex":2,"explanation":"天子死曰崩，诸侯曰薨，大夫曰卒，士曰不禄，庶人曰死。","explanations":["天子死曰崩，如「驾崩」","诸侯死曰薨","大夫死曰卒","士死曰不禄，庶人曰死"]},{"id":54,"category":"书画艺术","stem":"\"书圣\"指的是哪位书法家？","options":["柳公权","欧阳询","颜真卿","王羲之"],"answerIndex":3,"explanation":"东晋王羲之被尊为\"书圣\"，代表作《兰亭集序》被誉为\"天下第一行书\"。","explanations":["王羲之尊为书圣，《兰亭集序》为天下第一行书","颜真卿创颜体，称「颜鲁公」非书圣","柳公权创柳体，与颜并称「颜筋柳骨」","欧阳询创欧体，楷书四大家之一"]},{"id":55,"category":"书画艺术","stem":"\"文房四宝\"指的是？","options":["琴、棋、书、画","笔、墨、纸、砚","梅、兰、竹、菊","诗、书、礼、易"],"answerIndex":1,"explanation":"文房四宝以湖笔、徽墨、宣纸、端砚最为著名。","explanations":["文房四宝：笔、墨、纸、砚","琴棋书画为「四艺」","诗书礼易非文房概念","梅兰竹菊为「四君子」"]},{"id":56,"category":"书画艺术","stem":"\"岁寒三友\"指？","options":["梅、兰、竹","竹、菊、梅","松、梅、兰","松、竹、梅"],"answerIndex":3,"explanation":"松竹梅耐寒不凋，象征高洁品格，称岁寒三友；梅兰竹菊则是\"四君子\"。","explanations":["松竹梅耐寒不凋，称岁寒三友","梅兰竹组合缺松，非三友","竹菊梅组合缺松，非三友","松梅兰组合缺竹，非三友"]},{"id":57,"category":"书画艺术","stem":"国画中\"四君子\"指？","options":["兰、竹、荷、梅","松、竹、梅、兰","梅、菊、松、荷","梅、兰、竹、菊"],"answerIndex":3,"explanation":"梅傲、兰幽、竹坚、菊淡，喻君子品德。","explanations":["梅兰竹菊喻君子品德，称四君子","含松则多（岁寒三友），非四君子","含松含荷不合，四君子无松荷","含荷不合，四君子无荷"]},{"id":58,"category":"历史典故","stem":"\"卧薪尝胆\"形容的是哪位人物？","options":["夫差","刘邦","勾践","项羽"],"answerIndex":2,"explanation":"越王勾践战败后睡柴草、尝苦胆，励志复国灭吴。","explanations":["越王勾践卧薪尝胆，励志灭吴复国","夫差是吴王，勾践的对手","项羽是秦末人物，与此典故无关","刘邦是汉高祖，与此无关"]},{"id":59,"category":"历史典故","stem":"\"完璧归赵\"的主人公是？","options":["平原君","蔺相如","赵奢","廉颇"],"answerIndex":1,"explanation":"蔺相如携和氏璧出使秦国，机智周旋完璧归赵，后与廉颇\"将相和\"。","explanations":["蔺相如完璧归赵，后与廉颇将相和","廉颇是赵将，负荆请罪的一方","赵奢是赵将（纸上谈兵赵括之父）","平原君是战国四公子之一"]},{"id":60,"category":"历史典故","stem":"\"三顾茅庐\"指的是谁三次拜访谁？","options":["刘备拜访诸葛亮","刘备拜访庞统","孙权拜访诸葛亮","曹操拜访司马懿"],"answerIndex":0,"explanation":"刘备三次到隆中草庐拜访诸葛亮，诸葛亮提出《隆中对》。","explanations":["刘备三顾茅庐请诸葛亮，亮提出《隆中对》","庞统号凤雏，非三顾对象","孙权未三顾诸葛亮","曹操与司马懿无三顾典故"]},{"id":61,"category":"中国古代作家","stem":"「诗仙」指的是哪位诗人？","options":["李白","杜甫","白居易","李贺"],"answerIndex":0,"explanation":"李白诗风飘逸豪放，想象瑰丽，贺知章称其「谪仙人」。","explanations":["李白号青莲居士，诗风豪放飘逸，被后人尊为「诗仙」","杜甫诗风沉郁顿挫，忧国忧民，尊为「诗圣」","白居易诗通俗晓畅，号「诗魔」或「诗王」","李贺诗风奇诡冷艳，称「诗鬼」"]},{"id":62,"category":"中国古代作家","stem":"「诗圣」杜甫的诗歌因何被称为什么？","options":["诗史","诗仙","诗佛","诗鬼"],"answerIndex":0,"explanation":"杜甫的诗真实记录安史之乱前后的社会现实，故称「诗史」。","explanations":["杜甫诗反映安史之乱前后的社会实况，被称为「诗史」","诗仙是李白的尊号，与杜甫无关","诗佛是王维，其诗含禅意","诗鬼是李贺，诗风奇诡"]},{"id":63,"category":"中国古代作家","stem":"「香山居士」是哪位诗人的号？","options":["白居易","苏轼","欧阳修","李商隐"],"answerIndex":0,"explanation":"白居易晚年居洛阳香山，自号香山居士，代表作《长恨歌》《琵琶行》。","explanations":["白居易晚号香山居士，主张「文章合为时而著」","苏轼号东坡居士","欧阳修号六一居士","李商隐无此号，与杜牧并称「小李杜」"]},{"id":64,"category":"中国古代作家","stem":"被尊为「圣人」之后，子曰「文起八代之衰」赞扬的是哪位文学家？","options":["韩愈","柳宗元","李白","杜甫"],"answerIndex":0,"explanation":"苏轼评价韩愈古文运动「文起八代之衰，道济天下之溺」。","explanations":["韩愈领导古文运动，反对骈文，苏轼赞其「文起八代之衰」","柳宗元与韩愈并称「韩柳」，同为古文运动领袖，但此评专指韩愈","李白是诗人，不涉古文运动","杜甫是诗人，不涉古文运动"]},{"id":65,"category":"中国古代作家","stem":"「三苏」指的是哪三位文学家？","options":["苏洵、苏轼、苏辙","苏轼、苏武、苏秦","苏洵、苏曼殊、苏轼","苏辙、苏舜钦、苏轼"],"answerIndex":0,"explanation":"苏洵与二子苏轼、苏辙并称三苏，同列「唐宋八大家」。","explanations":["三苏为眉山苏氏父子三人，占唐宋八大家三席","苏武是西汉出使匈奴的使节，苏秦是战国纵横家","苏曼殊是近代诗人僧人，不在三苏之列","苏舜钦是北宋诗人，与苏轼同代但非父子"]},{"id":66,"category":"中国古代作家","stem":"「唐宋八大家」中属于唐代的是哪两位？","options":["韩愈、柳宗元","韩愈、欧阳修","柳宗元、苏轼","王安石、曾巩"],"answerIndex":0,"explanation":"八大家以韩愈、柳宗元领衔，其余六家（欧、苏、王、曾等）皆宋人。","explanations":["韩愈柳宗元是唐代仅有的两位八大家","欧阳修是北宋文坛领袖，非唐人","苏轼是北宋大家，非唐人","王安石、曾巩均为北宋人"]},{"id":67,"category":"中国古代作家","stem":"「易安居士」指的是哪位女词人？","options":["李清照","朱淑真","蔡文姬","班昭"],"answerIndex":0,"explanation":"李清照号易安居士，婉约词宗，有「千古第一才女」之称。","explanations":["李清照号易安居士，《漱玉词》作者，「生当作人杰」显豪气","朱淑真也是宋代女词人，号幽栖居士","蔡文姬是东汉才女，作《胡笳十八拍》","班昭是东汉史学家，续写《汉书》"]},{"id":68,"category":"中国古代作家","stem":"写《窦娥冤》的元代杂剧大家是谁？","options":["关汉卿","王实甫","汤显祖","马致远"],"answerIndex":0,"explanation":"关汉卿是元曲四大家之首，《窦娥冤》为其悲剧代表作。","explanations":["关汉卿自称「铜豌豆」，元杂剧奠基人，《窦娥冤》为其代表作","王实甫代表作是《西厢记》","汤显祖是明代戏曲家，作《牡丹亭》","马致远是元曲大家，代表作《天净沙·秋思》与《汉宫秋》"]},{"id":69,"category":"中国古代作家","stem":"《聊斋志异》的作者是谁？","options":["蒲松龄","曹雪芹","吴承恩","纪晓岚"],"answerIndex":0,"explanation":"蒲松龄号柳泉居士，被誉为「世界短篇小说之王」（其作）。","explanations":["蒲松龄设茶摊搜集奇闻，写成文言短篇集《聊斋志异》","曹雪芹著《红楼梦》，清代章回小说","吴承恩著《西游记》","纪晓岚主纂《四库全书》，著《阅微草堂笔记》"]},{"id":70,"category":"中国古代作家","stem":"「豪放派」词风的代表人物是谁？","options":["苏轼、辛弃疾","李清照、柳永","晏殊、欧阳修","周邦彦、姜夔"],"answerIndex":0,"explanation":"苏辛并称，拓宽词境，「大江东去」「金戈铁马」皆豪放名句。","explanations":["苏轼开豪放先河，辛弃疾发扬光大，并称「苏辛」","李清照柳永是婉约派代表","晏欧词风雍容婉丽，属婉约","周姜精于音律格律，属婉约雅词一脉"]},{"id":71,"category":"中国现当代作家","stem":"中国现代文学的奠基人、写出《狂人日记》的是谁？","options":["鲁迅","茅盾","郭沫若","巴金"],"answerIndex":0,"explanation":"鲁迅发表中国第一篇现代白话小说《狂人日记》，著《呐喊》《彷徨》。","explanations":["鲁迅是新文化运动主将，《狂人日记》开现代白话小说先河","茅盾代表作《子夜》，设「茅盾文学奖」","郭沫若是新诗奠基人之一，著《女神》","巴金著「激流三部曲」《家》《春》《秋》"]},{"id":72,"category":"中国现当代作家","stem":"「横眉冷对千夫指，俯首甘为孺子牛」出自谁的诗作？","options":["鲁迅","闻一多","徐志摩","艾青"],"answerIndex":0,"explanation":"出自鲁迅《自嘲》，集中体现其爱憎分明的精神品格。","explanations":["鲁迅《自嘲》名联，自题写照其战斗与奉献精神","闻一多新月派诗人，著《红烛》《死水》","徐志摩新月派代表，作《再别康桥》","艾青现实主义诗人，作《大堰河——我的保姆》"]},{"id":73,"category":"中国现当代作家","stem":"长篇小说《骆驼祥子》的作者是？","options":["老舍","沈从文","钱钟书","曹禺"],"answerIndex":0,"explanation":"老舍是「人民艺术家」，京味文学代表，还著《茶馆》《四世同堂》。","explanations":["老舍著《骆驼祥子》，写北平人力车夫的悲剧","沈从文著《边城》，湘西题材","钱钟书著《围城》，讽刺知识分子","曹禺是剧作家，著《雷雨》《日出》"]},{"id":74,"category":"中国现当代作家","stem":"「激流三部曲」《家》《春》《秋》的作者是？","options":["巴金","老舍","茅盾","丁玲"],"answerIndex":0,"explanation":"巴金以《家》控诉封建大家庭的罪恶，影响了几代青年。","explanations":["巴金著激流三部曲与「爱情三部曲」（《雾》《雨》《电》）","老舍的代表作是《四世同堂》等京味作品","茅盾代表作《子夜》《林家铺子》","丁玲著《莎菲女士的日记》《太阳照在桑干河上》"]},{"id":75,"category":"中国现当代作家","stem":"《边城》描绘湘西风土人情的作者是？","options":["沈从文","汪曾祺","萧红","孙犁"],"answerIndex":0,"explanation":"沈从文以湘西为文学原乡，《边城》翠翠成为经典形象。","explanations":["沈从文《边城》构建了诗意的湘西世界","汪曾祺师承沈从文，著《受戒》，文风冲淡","萧红著《呼兰河传》，东北作家群","孙犁是「荷花淀派」创始人"]},{"id":76,"category":"中国现当代作家","stem":"写出《雷雨》《日出》的戏剧大家是？","options":["曹禺","老舍","田汉","夏衍"],"answerIndex":0,"explanation":"曹禺23岁写《雷雨》，中国现代话剧成熟的标志。","explanations":["曹禺四大名剧：《雷雨》《日出》《原野》《北京人》","老舍的话剧代表是《茶馆》","田汉作《义勇军进行曲》歌词，国歌之父","夏衍著《上海屋檐下》，报告文学《包身工》"]},{"id":77,"category":"中国现当代作家","stem":"《围城》中「城外的人想冲进去，城里的人想逃出来」的作者是？","options":["钱钟书","杨绛","张爱玲","林语堂"],"answerIndex":0,"explanation":"钱钟书学贯中西，《围城》被誉为「新儒林外史」。","explanations":["钱钟书著《围城》《谈艺录》，讽刺笔法登峰造极","杨绛是钱钟书之妻，著《我们仨》，译《堂吉诃德》","张爱玲著《倾城之恋》《金锁记》，苍凉笔调","林语堂著《京华烟云》，提倡幽默小品"]},{"id":78,"category":"中国现当代作家","stem":"获诺贝尔文学奖、著《红高粱家族》的中国作家是？","options":["莫言","余华","王蒙","贾平凹"],"answerIndex":0,"explanation":"莫言2012年获诺奖，是首位获此奖的中国籍作家。","explanations":["莫言2012年获诺贝尔文学奖，代表作还有《丰乳肥臀》《蛙》","余华著《活着》《许三观卖血记》，尚未获诺奖","王蒙著《活动变人形》，曾任文化部长","贾平凹著《秦腔》《废都》，陕军代表"]},{"id":79,"category":"中国现当代作家","stem":"《平凡的世界》的作者是？","options":["路遥","陈忠实","梁晓声","阿城"],"answerIndex":0,"explanation":"路遥以《平凡的世界》获茅盾文学奖，写黄土高原奋斗史诗。","explanations":["路遥《平凡的世界》全景式描写城乡社会生活，获第三届茅奖","陈忠实著《白鹿原》，获第四届茅奖","梁晓声著《人世间》，获第十届茅奖","阿城著「三王」：《棋王》《树王》《孩子王》"]},{"id":80,"category":"中国现当代作家","stem":"著《活着》、以「零度写作」冷静叙事的先锋作家是？","options":["余华","苏童","格非","残雪"],"answerIndex":0,"explanation":"余华从先锋转向写实，《活着》写福贵一生苦难而坚忍。","explanations":["余华《活着》《许三观卖血记》，先锋派转型代表","苏童著《妻妾成群》（《大红灯笼高高挂》原著）","格非著《江南三部曲》，获第九届茅奖","残雪是先锋派女作家，作品具卡夫卡式风格"]},{"id":81,"category":"外国作家","stem":"创作《哈姆雷特》《罗密欧与朱丽叶》的剧作家是？","options":["莎士比亚","歌德","雨果","托尔斯泰"],"answerIndex":0,"explanation":"莎士比亚是英国文艺复兴时期戏剧大师，四大悲剧享誉世界。","explanations":["莎士比亚四大悲剧：哈姆雷特、奥赛罗、李尔王、麦克白","歌德是德国作家，著《浮士德》《少年维特之烦恼》","雨果是法国浪漫主义领袖，著《悲惨世界》《巴黎圣母院》","托尔斯泰是俄国文豪，著《战争与和平》《安娜·卡列尼娜》"]},{"id":82,"category":"外国作家","stem":"「童话大王」安徒生来自哪个国家？","options":["丹麦","德国","挪威","瑞典"],"answerIndex":0,"explanation":"安徒生是丹麦作家，《海的女儿》《丑小鸭》皆出自其手。","explanations":["安徒生是丹麦人，写童话160余篇，被誉为「世界儿童文学的太阳」","德国的格林兄弟搜集整理童话，与安徒生创作不同","挪威有易卜生（戏剧家），非童话大王","瑞典有林格伦（《长袜子皮皮》作者）"]},{"id":83,"category":"外国作家","stem":"著《战争与和平》《复活》，被称为「俄国革命镜子」的是？","options":["列夫·托尔斯泰","陀思妥耶夫斯基","契诃夫","高尔基"],"answerIndex":0,"explanation":"列宁称托尔斯泰为「俄国革命的镜子」，其心理描写登峰造极。","explanations":["托尔斯泰三大长篇：战争与和平、安娜·卡列尼娜、复活","陀思妥耶夫斯基著《罪与罚》《卡拉马佐夫兄弟》","契诃夫是短篇小说巨匠与戏剧家，著《变色龙》《樱桃园》","高尔基著《母亲》《童年》，社会主义现实主义奠基人"]},{"id":84,"category":"外国作家","stem":"著《悲惨世界》《巴黎圣母院》的法国作家是？","options":["雨果","巴尔扎克","福楼拜","大仲马"],"answerIndex":0,"explanation":"雨果是法国浪漫主义领袖，主张「美丑对照」原则。","explanations":["雨果两部长篇巨著皆以人道主义关怀底层","巴尔扎克著《人间喜剧》系列，现实主义大师","福楼拜著《包法利夫人》，以客观冷静著称","大仲马著《基督山伯爵》《三个火枪手》，通俗小说之王"]},{"id":85,"category":"外国作家","stem":"《浮士德》的作者、德国文学的最高代表是？","options":["歌德","席勒","海涅","卡夫卡"],"answerIndex":0,"explanation":"歌德历时60余年写就《浮士德》，与但丁、莎士比亚、荷马并称四大文豪。","explanations":["歌德著《浮士德》与《少年维特之烦恼》，魏玛公国重臣","席勒与歌德齐名，著《阴谋与爱情》，狂飙突进运动","海涅是德国诗人，著《德国，一个冬天的童话》","卡夫卡是德语现代主义作家（奥匈帝国），著《变形记》"]},{"id":86,"category":"外国作家","stem":"著《老人与海》、获普利策奖与诺贝尔奖的美国「迷惘的一代」代表是？","options":["海明威","马克·吐温","福克纳","菲茨杰拉德"],"answerIndex":0,"explanation":"海明威以「冰山理论」著称，《老人与海》为他赢得1954年诺奖。","explanations":["海明威著《太阳照常升起》《永别了武器》，电报式文风","马克·吐温是幽默讽刺大师，著《哈克贝利·费恩历险记》","福克纳著《喧哗与骚动》，约克纳帕塔法世系","菲茨杰拉德著《了不起的盖茨比》，爵士时代代言人"]},{"id":87,"category":"外国作家","stem":"著《变形记》、用荒诞手法写异化的德语作家是？","options":["卡夫卡","加缪","萨特","黑塞"],"answerIndex":0,"explanation":"卡夫卡生前默默无闻，死后被尊为现代主义文学鼻祖之一。","explanations":["卡夫卡著《变形记》《审判》《城堡》，「卡夫卡式」已成专有名词","加缪著《局外人》《鼠疫》，存在主义，1957年诺奖","萨特存在主义哲学家兼作家，著《恶心》，拒领诺奖","黑塞著《荒原狼》《悉达多》，1946年诺奖"]},{"id":88,"category":"外国作家","stem":"「短篇小说巨匠」契诃夫的国籍是？","options":["俄国","法国","美国","英国"],"answerIndex":0,"explanation":"契诃夫与莫泊桑、欧·亨利并称世界三大短篇小说家。","explanations":["契诃夫是俄国作家，《套中人》《变色龙》讽刺入骨","法国的短篇巨匠是莫泊桑，著《项链》《羊脂球》","美国的欧·亨利以「欧·亨利式结尾」著称，著《麦琪的礼物》","英国的短篇小说名家有毛姆，著《月亮与六便士》"]},{"id":89,"category":"外国作家","stem":"著《一千零一夜》（又译《天方夜谭》）的是哪个地区的民间故事集？","options":["阿拉伯","古印度","古波斯","古埃及"],"answerIndex":0,"explanation":"《一千零一夜》是阿拉伯民间故事集，山鲁佐德讲故事免于一死。","explanations":["阿拉伯民间故事集，高尔基誉之为「民间文学最壮丽纪念碑」","古印度的《五卷书》《佛本生故事》是另一系统","古波斯有《一千零一天》，受一千零一夜影响而成","古埃及以金字塔铭文与纸草文献著称，无此故事集"]},{"id":90,"category":"外国作家","stem":"「文学上的林肯」、著《汤姆·索亚历险记》的美国作家是？","options":["马克·吐温","海明威","惠特曼","杰克·伦敦"],"answerIndex":0,"explanation":"马克·吐温是幽默讽刺文学大师，本名塞缪尔·克莱门斯。","explanations":["马克·吐温著《汤姆·索亚历险记》《哈克贝利·费恩历险记》","海明威是「迷惘的一代」代表，风格冷硬","惠特曼是诗人，著《草叶集》，自由诗先驱","杰克·伦敦著《野性的呼唤》《马丁·伊登》"]},{"id":91,"category":"文言句式","stem":"「陈胜者，阳城人也」属于哪种文言句式？","options":["判断句","被动句","省略句","宾语前置句"],"answerIndex":0,"explanation":"「……者，……也」是文言判断句的典型标志。","explanations":["「者……也」表判断，译为「陈胜是阳城人」，是判断句固定格式","被动句常见标志是「为……所」「见……于」等","省略句是成分省略，本句成分完整","宾语前置需动词前移宾语，如「何陋之有」"]},{"id":92,"category":"文言句式","stem":"「身死人手，为天下笑者」中的「为天下笑」是什么句式？","options":["被动句（为……所式省略）","判断句","定语后置句","状语后置句"],"answerIndex":0,"explanation":"「为天下笑」即「被天下人耻笑」，「为」引出施动者。","explanations":["「为+施动者+动词」表被动，即被天下人笑话","无「者……也」标志，不是判断句","定语后置如「马之千里者」，此句不是","状语后置如「青取之于蓝」，此句不是"]},{"id":93,"category":"文言句式","stem":"「何陋之有」属于哪种句式？","options":["宾语前置句","判断句","被动句","省略句"],"answerIndex":0,"explanation":"「何陋之有」即「有何陋」，「之」为宾语前置的标志。","explanations":["疑问代词作宾语前置，「之」复指宾语，译为「有什么简陋的呢」","无判断词或「者……也」，非判断句","句中无被动标志词","「何陋之有」成分完整（前置后），主要特征是倒装"]},{"id":94,"category":"文言句式","stem":"「青，取之于蓝，而青于蓝」的后半句「青于蓝」属于？","options":["状语后置句","判断句","被动句","定语后置句"],"answerIndex":0,"explanation":"「青于蓝」即「于蓝青」（比蓝更青），介宾短语后置。","explanations":["「于蓝」是介宾短语作状语，翻译时须提前：比蓼蓝更青","无判断标志","无被动含义","「于蓝」是状语不是定语"]},{"id":95,"category":"文言句式","stem":"「蚓无爪牙之利，筋骨之强」属于哪种句式？","options":["定语后置句","判断句","被动句","省略句"],"answerIndex":0,"explanation":"「爪牙之利」即「利之爪牙」，「之」为定语后置的标志。","explanations":["中心词+之+定语：锋利的爪牙，定语后置以强调","无判断词","无被动含义","成分完整，特征是定语移位"]},{"id":96,"category":"文言句式","stem":"「臣本布衣，躬耕于南阳」的前半句「臣本布衣」是？","options":["判断句（无标志判断）","被动句","宾语前置句","省略句"],"answerIndex":0,"explanation":"名词性谓语直接表判断：我本来是平民。","explanations":["无「者……也」但名词谓语直接表判断：臣=平民","无被动标志","无宾语前置","「躬耕于南阳」有省略主语的成分，但题问前半句"]},{"id":97,"category":"文言句式","stem":"「永州之野产异蛇，黑质而白章」中「（蛇）黑质而白章」属于？","options":["省略句（省主语）","判断句","被动句","定语后置句"],"answerIndex":0,"explanation":"承前省略主语「蛇」：（这种蛇）黑色的底子白色的花纹。","explanations":["主语承前省略，补出为「这种蛇」","无判断词或判断句式","无被动含义","无定语后置标志"]},{"id":98,"category":"文言句式","stem":"「不患人之不己知」中的「不己知」属于？","options":["宾语前置句","判断句","被动句","省略句"],"answerIndex":0,"explanation":"否定句中代词作宾语前置：「不己知」即「不知己」。","explanations":["否定句+代词宾语→前置：不知道自己","无判断含义","无被动标志","成分完整，特征是倒装"]},{"id":99,"category":"文言句式","stem":"「为坛而盟，祭以尉首」中「祭以尉首」属于？","options":["状语后置句","判断句","被动句","省略句"],"answerIndex":0,"explanation":"「祭以尉首」即「以尉首祭」，用两尉的头祭祀。","explanations":["「以尉首」介宾短语后置，译时提前：用两尉的头作祭品","无判断标志","无被动含义","省略了主语但主要特征是状语后置"]},{"id":100,"category":"文言句式","stem":"「受任于败军之际，奉命于危难之间」未使用哪种句式？","options":["被动句","状语后置","对偶","互文见义"],"answerIndex":0,"explanation":"两句是「于……」状语后置+工整对偶，但无被动用法。","explanations":["「于败军之际」「于危难之间」是状语后置，但施受关系上「受任」「奉命」非被动句式标志","「于+名词」结构后置了","两句字数相等结构相同，是对偶","「败军之际」与「危难之间」意义上互相补充，含互文手法；但被动句不存在"]},{"id":101,"category":"文言虚词","stem":"「之」在「何陋之有」中的用法是？","options":["宾语前置的标志","代词，指代陋室","结构助词「的」","动词，到、往"],"answerIndex":0,"explanation":"「之」在此无实义，仅作宾语前置的语法标志，翻译时不译。","explanations":["疑问句中代词宾语前置时用「之」复指，助词不译","「何陋之有」的「之」不指代具体事物","若译「的」则为「何陋的有」，不通","动词用法如「辍耕之垄上」，此处不是"]},{"id":102,"category":"文言虚词","stem":"「辍耕之垄上」中「之」的用法是？","options":["动词，到……去","结构助词「的」","宾语前置标志","代词"],"answerIndex":0,"explanation":"「之」后接地点名词「垄上」，是动词「前往」的用法。","explanations":["「之+地点」=到某地：停止耕作走到田埂上","「的」后面应接名词性成分且句子结构不同","宾语前置标志无实义，此处「之」有动作义","代词用法需替代前文事物，此处不是"]},{"id":103,"category":"文言虚词","stem":"「其」在「其真无马邪？其真不知马也」中两个「其」分别是？","options":["表反问「难道」；表推测「大概」","都是代词「它的」","都是语气词","前是代词后是反问"],"answerIndex":0,"explanation":"同字异用：「其」可表反问语气，也可表委婉推测。","explanations":["前句反问：难道真的没有马吗？后句推测：大概是真的不识马吧","两个「其」都修饰全句语气，非代词","「其」作语气副词各有含义，不同","前句是反问不是代词"]},{"id":104,"category":"文言虚词","stem":"「而」在「学而不思则罔」中表什么关系？","options":["转折","顺承","并列","因果"],"answerIndex":0,"explanation":"「学而不思」：只学习却不思考，前后语意转折。","explanations":["「却」可替换：学了却不思考就会迷惑，转折关系","顺承如「温故而知新」（然后），此处语意相反","并列要求前后同性质，此处语义相对","无因果关系词标志"]},{"id":105,"category":"文言虚词","stem":"「以」在「以光先帝遗德」中的用法是？","options":["介词，用/凭/来","动词，认为","连词，因为","名词，原因"],"answerIndex":0,"explanation":"「以光先帝遗德」：来发扬光大先帝遗留的美德。","explanations":["介词「以+名词」引出凭借或目的：来光大……","动词「以为」义如「皆以美于徐公」，此处不是","「以」表原因常译「因为」，此处是目的","名词用法如「不以物喜」的引申，此处不是"]},{"id":106,"category":"文言虚词","stem":"「于」在「青出于蓝」中表什么？","options":["介词，从","介词，比","介词，在","介词，被"],"answerIndex":0,"explanation":"「青出于蓝」：靛青从蓼蓝中提取，表来源起点。","explanations":["「出于蓝」=从蓼蓝中提出，表出处","「比」义如「而青于蓝」（后半句才是）","「在」义如「落于其所」，此处是来源","「被」义需被动语境，此处无"]},{"id":107,"category":"文言虚词","stem":"「者」在「陈胜者，阳城人也」中的作用是？","options":["助词，表提顿","代词，……的人","名词，原因","助词，表修饰"],"answerIndex":0,"explanation":"「者」放主语后表提顿，引出判断：陈胜，是阳城人。","explanations":["「……者，……也」判断句式的提顿助词","「……的人」如「行者」，此处陈胜是具体人名","「原因」如「此其所以……者」，此处不是","表修饰的「者」如「耕者」属代词性用法，此处不是"]},{"id":108,"category":"文言虚词","stem":"「乃」在「乃不知有汉，无论魏晋」中表什么语气？","options":["竟然（出乎意料）","于是（顺承）","才（后置条件）","你的"],"answerIndex":0,"explanation":"桃花源人「乃不知有汉」——竟然不知道有汉朝，表惊讶。","explanations":["表意外：与世隔绝之久竟不知朝代更替","「于是」义如「乃入见」，此处语意是惊讶非顺承","「才」义如「乃悟」，此处无前后条件关系","「你的」是第二人称代词用法，此处不是"]},{"id":109,"category":"文言虚词","stem":"「焉」在「三人行，必有我师焉」中的用法是？","options":["兼词，相当于「于此」","语气词，呢","代词，他们","疑问副词，怎么"],"answerIndex":0,"explanation":"「焉」=于+之：在其中（必有可以当我老师的人在其中）。","explanations":["「焉」是兼词：在里面必有我的老师","句末语气词「呢」不与实义结合，此处有指代义","单纯代词用法不含「于」义","疑问用法如「焉能」，此处非疑问"]},{"id":110,"category":"文言虚词","stem":"「乎」在「王侯将相宁有种乎」中的用法是？","options":["语气词，表反问","介词，相当于「于」","形容词词尾","动词，呼叫"],"answerIndex":0,"explanation":"「宁……乎」固定结构表反问：王侯将相难道是天生的贵种吗？","explanations":["句末反问语气：难道……吗","介词「乎」=于，如「生乎吾前」，此处是句末","词尾如「浩乎」「沛乎」，此处不是","「呼叫」义见于「嗟乎」等叹词系统，此处不是"]},{"id":111,"category":"文言实词","stem":"「走」在「走送之」（《送东阳马生序》）中的古义是？","options":["跑","行走","离开","追随"],"answerIndex":0,"explanation":"「走」古义为跑，「走送之」=赶快跑去送还书。","explanations":["文言「走」=跑；「行」才是走，古今异义典型","行走是今义，非文言本义","离开是「去」的古义","追随是「从」义，非「走」"]},{"id":112,"category":"文言实词","stem":"「去」在「去国怀乡」中的古义是？","options":["离开","前往","过去的","丢弃"],"answerIndex":0,"explanation":"「去国怀乡」=离开国都，怀念家乡，「去」古义为离开。","explanations":["文言「去」=离开（今义相反，是「前往」）","「前往」恰是今义，古今相反","「过去的」如「去岁」，此处是动词","丢弃义如「去糟粕」，此处不是"]},{"id":113,"category":"文言实词","stem":"「妻子」在「率妻子邑人来此绝境」中指？","options":["妻子和儿女","男子的配偶","妻子和孩子","儿女"],"answerIndex":0,"explanation":"古义「妻子」是两个词：妻+子（妻子儿女）。","explanations":["文言双音节词常是短语：妻子=妻子+儿女","仅指配偶是今义","顺序不对，且「子」指儿女非特指孩子","漏了「妻」，不完整"]},{"id":114,"category":"文言实词","stem":"「绝境」在「来此绝境」中的古义是？","options":["与世隔绝的地方","没有出路的境地","极高的山峰","边境地区"],"answerIndex":0,"explanation":"「绝境」=与世隔绝之地，桃花源正是与外界隔绝。","explanations":["古义：隔绝之地，非今义「走投无路」","「没有出路」是今义，语境不合","「绝」可表极，但「绝境」此处指隔绝之地","边境是「边」义，非「绝境」"]},{"id":115,"category":"文言实词","stem":"「汤」在「媵人持汤沃灌」中指？","options":["热水","菜汤","温泉","姓氏"],"answerIndex":0,"explanation":"「持汤沃灌」=拿热水浇洗（洗手面），「汤」古义为热水。","explanations":["古义热水，如「赴汤蹈火」同此","菜汤是今义「汤」","温泉是特定地热，文言称「温泉」","姓氏与句中用法无关"]},{"id":116,"category":"文言实词","stem":"「假」在「假诸人而后见」中的用法是？","options":["借","不真实","假如","宽容"],"answerIndex":0,"explanation":"「假诸人」=借之于人（诸=之于），「假」古义为借。","explanations":["文言「假」常表借用，如「假舟楫者」","「假」表虚假是今义","假如义如「假令」，此处是动词借用","宽容义如「假贷」，此处不是"]},{"id":117,"category":"文言实词","stem":"「通假字」关系正确的一组是？","options":["便舍船，从口入——「舍」通「捨」","甚矣，汝之不惠——「惠」通「慧」","知明而行无过——「知」通「智」和「惠」都错","属予作文以记之——「属」通「嘱」"],"answerIndex":1,"explanation":"「惠」通「慧」：甚矣，汝之不慧（你的智慧不够呀）。","explanations":["「舍」在「屋舍」「舍船」中均为本字（居住/丢弃），不通「捨」","正确：愚公移山智叟之「惠」即「慧」","「知」通「智」是对的但选项把两个混在一起表述错误","「属」通「嘱」是对的（托付），但此选项作为「正确一组」不如B直接明了——注意本题选B"]},{"id":118,"category":"文言实词","stem":"「一食或尽粟一石」中「或」的意思是？","options":["有时","或许","有的人","或者"],"answerIndex":0,"explanation":"「或」文言常表「有时」：有时一顿吃完一石粮食。","explanations":["马食量不稳定，「有时」吃完一石，表不定时","「或许」表推测，语境是客观陈述","「有的人」如「或以为死」，此处主语是马","「或者」是选择连词，此处不是"]},{"id":119,"category":"文言实词","stem":"「顾」在「三顾臣于草庐之中」中的意思是？","options":["拜访","回头看","照顾","但是"],"answerIndex":0,"explanation":"「三顾茅庐」的「顾」=探望、拜访。","explanations":["刘备三次到草庐拜访诸葛亮","「回头看」如「顾野有麦场」，此处是拜访义","照顾义如「三顾频烦天下计」引申，本义此处是拜访","「但是」义如「顾不如蜀鄙之僧哉」，此处不是"]},{"id":120,"category":"文言实词","stem":"「所以动心忍性，曾益其所不能」中「曾」的用法是？","options":["通「增」，增加","曾经","竟然","重叠"],"answerIndex":0,"explanation":"「曾益」即「增益」，「曾」通「增」，使他增加所不具备的才能。","explanations":["通假字：曾=增，增加其所不能","「曾经」是今义常用义，文言中此处不通","「竟然」义如「曾不若孀妻弱子」，此处不是","「重叠」义如「曾云」，此处不是"]}]};
+
+/* ================= 工具与状态 ================= */
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'"',"'":'&#39;'}[c]));
+const isDark = () => matchMedia('(prefers-color-scheme: dark)').matches;
+const P = 'wencuiweb-v1';
+function load() { try { return JSON.parse(localStorage.getItem(P) || 'null'); } catch (e) { return null; } }
+function save() { localStorage.setItem(P, JSON.stringify(S)); }
+
+const DEFAULTS = { totalAnswered:0, totalCorrect:0, bestCombo:0, lastDailyKey:'', streak:0, bestStreak:0, mistakeIds:[], favoriteIds:[], categoryStats:{} };
+let S = load() || { ...DEFAULTS };
+let UI = { screen:'home', cat:null, idx:0, picked:-1, answered:false, qids:[], answers:[], display:[], sessionId:0, searchGo:false, dailyDone:false, dailyScore:null };
+
+/* ================= 题库与分类 ================= */
+const byId = new Map((BANK ? BANK.questions : []).map(q => [q.id, q]));
+function categories() {
+  const m = new Map();
+  for (const q of (BANK ? BANK.questions : [])) {
+    const st = m.get(q.category) || { count:0 };
+    st.count++;
+    m.set(q.category, st);
+  }
+  for (const [k, v] of Object.entries(S.categoryStats)) {
+    if (m.has(k)) m.get(k).answered = v.answered, m.get(k).correct = v.correct;
+  }
+  return [...m.entries()].map(([name, v]) => ({ name, count:v.count, answered:v.answered||0, correct:v.correct||0 }));
+}
+function ratio(c) { return c.answered ? c.correct / c.answered : -1; }
+function meterColor(r) { if (r < 0) return 'transparent'; if (r >= .8) return '#43A047'; if (r >= .6) return '#F59E0B'; return '#E53935'; }
+
+/* ================= 出卷 ================= */
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function startQuiz(qids, label) {
+  UI.qids = qids; UI.cat = label; UI.idx = 0; UI.picked = -1; UI.answered = false;
+  UI.answers = qids.map(() => -1);
+  UI.display = qids.map(id => { const q = byId.get(id); return { id, order: shuffle([0,1,2,3].filter(i => i < q.options.length)) }; });
+  UI.sessionId++;
+  UI.screen = 'quiz'; go();
+}
+function dailyKey() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function startDaily() {
+  const qs = BANK.questions;
+  let h = 0; for (const c of dailyKey()) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const pool = qs.slice();
+  const picks = [];
+  let seed = h;
+  for (let n = 0; n < 10 && pool.length; n++) {
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    picks.push(pool.splice(seed % pool.length, 1)[0].id);
+  }
+  startQuiz(picks, '每日一练');
+}
+
+/* ================= 统计落盘 ================= */
+function record(q, correct) {
+  S.totalAnswered++; if (correct) S.totalCorrect++;
+  const cs = S.categoryStats[q.category] || (S.categoryStats[q.category] = { answered:0, correct:0 });
+  cs.answered++; if (correct) cs.correct++;
+  // 错题本：答错入本，答对除名（与 App 行为一致）
+  const mi = S.mistakeIds.indexOf(q.id);
+  if (!correct && mi < 0) S.mistakeIds.push(q.id);
+  if (correct && mi >= 0) S.mistakeIds.splice(mi, 1);
+  if (UI.cat === '每日一练' && UI.idx === UI.qids.length - 1 && !UI.dailyDone) {
+    UI.dailyDone = true; UI.dailyScore = null;
+    S.lastDailyKey = dailyKey(); S.streak++; if (S.streak > S.bestStreak) S.bestStreak = S.streak;
+  }
+  save();
+}
+function toggleFav(id) {
+  const i = S.favoriteIds.indexOf(id);
+  if (i >= 0) S.favoriteIds.splice(i, 1); else S.favoriteIds.push(id);
+  save();
+}
+function isFav(id) { return S.favoriteIds.includes(id); }
+
+/* ================= 渲染 ================= */
+function go() { save(); render(); }
+
+function render() {
+  document.documentElement.dataset.theme = isDark() ? 'dark' : 'light';
+  const scr = UI.screen;
+  if (scr === 'home') return renderHome();
+  if (scr === 'quiz') return renderQuiz();
+  if (scr === 'result') return renderResult();
+  if (scr === 'wrong') return renderList(S.mistakeIds, '错题本', '答对一道即可除名');
+  if (scr === 'fav') return renderList(S.favoriteIds, '收藏夹', '长按卡片取消收藏');
+}
+
+function renderHome() {
+  const dailyAvailable = S.lastDailyKey !== dailyKey();
+  const acc = S.totalAnswered ? Math.round(S.totalCorrect / S.totalAnswered * 100) : 0;
+  const cats = categories();
+  const kw = (UI.kw || '').trim();
+  let searched = null;
+  if (kw) {
+    const k = kw.toLowerCase();
+    searched = BANK.questions.filter(q =>
+      q.stem.toLowerCase().includes(k) || q.category.toLowerCase().includes(k) ||
+      q.options.some(o => String(o).toLowerCase().includes(k)) ||
+      (q.explanation || '').toLowerCase().includes(k)
+    );
+  }
+  app.innerHTML = `
+  <div class="fade-in">
+    <div class="header">
+      <div class="app-title">文萃<span class="accent">刷题</span></div>
+      <div class="icon-row">
+        <button class="icon-btn" id="b-fav">⭐</button>
+        <button class="icon-btn" id="b-wrong">📕</button>
+      </div>
+    </div>
+    <div class="stat-cards">
+      <div class="stat glass"><div class="num">${S.totalAnswered}</div><div class="label">已刷题数</div></div>
+      <div class="stat glass"><div class="num">${acc}%</div><div class="label">总正确率</div></div>
+      <div class="stat glass"><div class="num red">🔥${S.streak}</div><div class="label">连胜${S.streak >= S.bestStreak && S.streak > 0 ? ' · 新高' : ''}</div></div>
+    </div>
+    <div class="daily glass">
+      <div><h3>每日一练</h3><p>${dailyAvailable ? '今天还没打卡，来 10 题吧' : '今日已完成 ✓ 明天再来'}</p></div>
+      <button class="btn" id="b-daily" ${dailyAvailable ? '' : 'disabled'}>开始</button>
+    </div>
+    <div class="search-row">
+      <input id="kw" placeholder="搜索题目 / 分类 / 解析…" value="${esc(kw)}">
+      <button class="btn" id="b-go">GO</button>
+    </div>
+    <div id="search-zone"></div>
+    <div class="cat-grid">
+      ${cats.map(c => {
+        const r = ratio(c);
+        const w = r < 0 ? 0 : Math.round(r * 100);
+        return `<div class="cat glass" data-cat="${esc(c.name)}">
+          <h4>${esc(c.name)}</h4>
+          <div class="meta">${c.count} 题 · 掌握 ${r < 0 ? '—' : w + '%'}</div>
+          <div class="meter"><i style="width:${w}%;background:${meterColor(r)}"></i></div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+  $('#b-daily').onclick = () => startDaily();
+  $('#b-fav').onclick = () => { UI.screen = 'fav'; go(); };
+  $('#b-wrong').onclick = () => { UI.screen = 'wrong'; go(); };
+  $('#b-go').onclick = () => { UI.kw = $('#kw').value; render(); };
+  $('#kw').onkeydown = e => { if (e.key === 'Enter') { UI.kw = $('#kw').value; render(); } };
+  const zone = $('#search-zone');
+  if (kw) {
+    zone.innerHTML = searched.length
+      ? `<div class="lc glass" id="go-search"><h4>找到 ${searched.length} 道相关题目 · 点击开始练习</h4></div>`
+      : `<div class="empty">没有匹配「${esc(kw)}」的题目</div>`;
+    if (searched.length) $('#go-search').onclick = () => startQuiz(searched.map(q => q.id), '搜索:' + kw);
+  }
+  app.querySelectorAll('[data-cat]').forEach(el => {
+    el.onclick = () => {
+      const name = el.dataset.cat;
+      const ids = BANK.questions.filter(q => q.category === name).map(q => q.id);
+      startQuiz(ids, name);
+    };
+  });
+}
+
+function renderQuiz() {
+  const q = byId.get(UI.qids[UI.idx]);
+  if (!q) { UI.screen = 'home'; return render(); }
+  const d = UI.display[UI.idx];
+  const fav = isFav(q.id);
+  app.innerHTML = `
+  <div class="fade-in">
+    <div class="qtop">
+      <button class="icon-btn" id="b-back">←</button>
+      <span class="pageno">${UI.idx + 1} / ${UI.qids.length}</span>
+      <span class="combo">🔥×${S.streak}</span>
+      <button class="icon-btn" id="b-fav">${fav ? '⭐' : '☆'}</button>
+    </div>
+    <div class="qcard glass">
+      <div class="qcat">${esc(UI.cat)}</div>
+      <div class="qstem">${esc(q.stem)}</div>
+      <div class="opts">
+        ${d.order.map((oi, pos) => {
+          let cls = '', dis = UI.answered ? 'disabled' : '';
+          if (UI.answered) {
+            const isAns = oi === q.answerIndex, isPick = pos === UI.picked;
+            if (isAns) cls = 'correct';
+            else if (isPick) cls = 'wrong';
+            else cls = 'dim';
+          }
+          return `<button class="opt ${cls}" ${dis} data-pos="${pos}"><span class="tag">${'ABCD'[pos]}</span>${esc(q.options[oi])}</button>`;
+        }).join('')}
+      </div>
+      ${UI.answered ? renderExplain(q, d) : ''}
+    </div>
+    ${UI.answered ? `<div class="qacts">
+      ${UI.idx < UI.qids.length - 1
+        ? '<button class="btn" id="b-next">下一题 →</button>'
+        : '<button class="btn" id="b-finish">查看结算 🎉</button>'}
+    </div>` : ''}
+  </div>`;
+  $('#b-back').onclick = () => { UI.screen = 'home'; UI.kw = ''; go(); };
+  $('#b-fav').onclick = () => { toggleFav(q.id); renderQuiz(); };
+  if (UI.answered) {
+    const nx = $('#b-next') || $('#b-finish');
+    nx.onclick = () => {
+      if (UI.idx < UI.qids.length - 1) { UI.idx++; UI.picked = -1; UI.answered = false; render(); }
+      else { UI.screen = 'result'; render(); }
+    };
+  } else {
+    app.querySelectorAll('.opt').forEach(el => {
+      el.onclick = () => {
+        const pos = +el.dataset.pos;
+        const oi = UI.display[UI.idx].order[pos];
+        UI.picked = pos; UI.answered = true;
+        UI.answers[UI.idx] = pos;
+        record(q, oi === q.answerIndex);
+        render();
+      };
+    });
+  }
+}
+function renderExplain(q, d) {
+  const correct = d.order[UI.picked] === q.answerIndex;
+  const lines = d.order.map((oi, pos) => {
+    const mark = oi === q.answerIndex ? '<span class="t ok">A</span>'.replace('A', 'ABCD'[pos]) : (pos === UI.picked && oi !== q.answerIndex ? '<span class="t no">' + 'ABCD'[pos] + '</span>' : '<b>' + 'ABCD'[pos] + '</b>');
+    return `<div class="line">${mark}${esc(q.explanations && q.explanations[oi] ? q.explanations[oi] : q.explanation || '')}</div>`;
+  }).join('');
+  return `<div class="explain fade-in">
+    <div class="verdict ${correct ? 'ok' : 'no'}">${correct ? '回答正确！' : '回答错误'}</div>
+    ${lines}
+  </div>`;
+}
+
+function renderResult() {
+  const n = UI.qids.length;
+  let ok = 0;
+  UI.display.forEach((d, i) => {
+    const pick = UI.answers[i];
+    if (pick >= 0 && d.order[pick] === byId.get(UI.qids[i]).answerIndex) ok++;
+  });
+  const pct = Math.round(ok / n * 100);
+  const emoji = pct === 100 ? '🏆' : pct >= 80 ? '🎉' : pct >= 60 ? '💪' : '📖';
+  const title = pct === 100 ? '完美通关！' : pct >= 80 ? '成绩优异！' : pct >= 60 ? '再接再厉' : '温故知新';
+  app.innerHTML = `
+  <div class="fade-in">
+    <div class="rcard glass">
+      <div class="emoji">${emoji}</div>
+      <h2>${title}</h2>
+      <div class="rscore">${ok}<small> / ${n}</small></div>
+      <div class="rsub">正确率 ${pct}% · ${esc(UI.cat)}</div>
+      <div class="racts">
+        <button class="btn sec" id="b-home">回主页</button>
+        <button class="btn" id="b-again">再来一遍</button>
+      </div>
+    </div>
+  </div>`;
+  $('#b-home').onclick = () => { UI.screen = 'home'; UI.kw = ''; go(); };
+  $('#b-again').onclick = () => startQuiz(UI.qids, UI.cat);
+}
+
+function renderList(ids, title, hint) {
+  const qs = ids.map(id => byId.get(id)).filter(Boolean);
+  app.innerHTML = `
+  <div class="fade-in">
+    <div class="qtop">
+      <button class="icon-btn" id="b-back">←</button>
+      <span class="pageno">${title}（${qs.length}）</span>
+      ${qs.length ? '<button class="btn" id="b-all" style="margin-left:auto;padding:9px 18px">连做</button>' : ''}
+    </div>
+    ${qs.length ? '' : `<div class="empty">${title}还是空的<br><small style="font-size:12px">${hint}</small></div>`}
+    ${qs.map(q => `<div class="lc glass" data-q="${q.id}">
+      <h4>${esc(q.stem)}</h4>
+      <div class="meta">${esc(q.category)} · ${isFav(q.id) ? '⭐ 已收藏' : '点击查看 / 练习'}</div>
+    </div>`).join('')}
+  </div>`;
+  $('#b-back').onclick = () => { UI.screen = 'home'; go(); };
+  const all = $('#b-all');
+  if (all) all.onclick = () => startQuiz(qs.map(q => q.id), title);
+  app.querySelectorAll('[data-q]').forEach(el => {
+    el.onclick = () => startQuiz([+el.dataset.q], title);
+  });
+}
+
+/* ================= 启动 ================= */
+if (!BANK) {
+  app.innerHTML = '<div class="empty">题库加载失败，请刷新页面或联系维护者</div>';
+} else {
+  initThemeWatch();
+  render();
+}
+function initThemeWatch() {
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    document.documentElement.dataset.theme = isDark() ? 'dark' : 'light';
+  });
+}
+</script>
+</body>
+</html>
