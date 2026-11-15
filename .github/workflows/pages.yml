@@ -29,6 +29,9 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          # 首次运行自动为仓库启用 GitHub Pages（需 GITHUB_TOKEN 具备 pages 写权限，已声明）
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
