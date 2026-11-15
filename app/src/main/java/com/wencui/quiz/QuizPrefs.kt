@@ -29,6 +29,8 @@ data class SavedProgress(
     val categoryStats: Map<String, CategoryStat> = emptyMap(),
     // 历史最佳连击
     val bestCombo: Int = 0,
+    // 限时挑战最佳成绩（60 秒答对题数）
+    val bestTimedScore: Int = 0,
     // 题库云端版本（0 = 未更新过，用内置题库）
     val bankVersion: Int = 0
 )

@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -99,6 +100,16 @@ fun QuizScreen(
 
     val answered = state.chosenIndex != null
 
+    // 限时挑战：每秒驱动倒计时，到点自动收卷
+    if (state.sessionType == "timed") {
+        LaunchedEffect(Unit) {
+            while (state.timeLeft > 0) {
+                kotlinx.coroutines.delay(1000)
+                viewModel.tickTimed()
+            }
+        }
+    }
+
     Column(modifier.fillMaxSize()) {
         // ===== 顶栏（瘦身版）=====
         Row(
@@ -126,6 +137,31 @@ fun QuizScreen(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
+            // 限时挑战倒计时（顶栏中段，红色渐紧）
+            if (state.sessionType == "timed") {
+                Spacer(Modifier.width(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Rounded.Timer,
+                        contentDescription = null,
+                        tint = when {
+                            state.timeLeft <= 10 -> Color(0xFFE53935)
+                            state.timeLeft <= 20 -> Color(0xFFFB8C00)
+                            else -> MaterialTheme.colorScheme.primary
+                        }
+                    )
+                    Text(
+                        "${state.timeLeft}s",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = when {
+                            state.timeLeft <= 10 -> Color(0xFFE53935)
+                            state.timeLeft <= 20 -> Color(0xFFFB8C00)
+                            else -> MaterialTheme.colorScheme.primary
+                        }
+                    )
+                }
+            }
             Spacer(Modifier.weight(1f))
             // 连击火焰（combo >= 3 显示）
             if (state.combo >= 3) {

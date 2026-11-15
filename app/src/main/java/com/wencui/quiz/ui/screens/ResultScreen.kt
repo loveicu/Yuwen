@@ -85,7 +85,7 @@ fun ResultScreen(
             }
             Spacer(Modifier.width(12.dp))
             Text(
-                "练习结算",
+                if (state.sessionType == "timed") "限时挑战结算" else "练习结算",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -109,18 +109,31 @@ fun ResultScreen(
                             .fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        val isTimed = state.sessionType == "timed"
                         val praise = when {
-                            accuracy == 100 -> "满腹经纶！"
-                            accuracy >= 80 -> "学有所成"
-                            accuracy >= 60 -> "渐入佳境"
+                            isTimed && state.sessionCorrect >= 20 -> "手速惊人！"
+                            isTimed && state.sessionCorrect >= 12 -> "思维敏捷"
+                            isTimed && state.sessionCorrect >= 6 -> "渐入佳境"
+                            !isTimed && accuracy == 100 -> "满腹经纶！"
+                            !isTimed && accuracy >= 80 -> "学有所成"
+                            !isTimed && accuracy >= 60 -> "渐入佳境"
                             else -> "温故知新"
                         }
-                        Text(
-                            "$displayAccuracy%",
-                            style = MaterialTheme.typography.displayLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        if (isTimed) {
+                            Text(
+                                "${state.sessionCorrect} 题",
+                                style = MaterialTheme.typography.displayLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Text(
+                                "$displayAccuracy%",
+                                style = MaterialTheme.typography.displayLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         Text(
                             praise,
                             style = MaterialTheme.typography.titleMedium,
@@ -128,10 +141,20 @@ fun ResultScreen(
                         )
                         Spacer(Modifier.height(18.dp))
                         Text(
-                            "本轮 ${state.records.size} 题 · 正确 ${state.sessionCorrect} 题",
+                            if (isTimed) "60 秒作答 ${state.records.size} 题 · 正确 ${state.sessionCorrect} 题 · 最佳 ${state.bestTimedScore} 题"
+                            else "本轮 ${state.records.size} 题 · 正确 ${state.sessionCorrect} 题",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (isTimed && state.newTimedRecord) {
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                "🏆 新纪录！",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
                         if (state.sessionType == "daily") {
                             Spacer(Modifier.height(12.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {

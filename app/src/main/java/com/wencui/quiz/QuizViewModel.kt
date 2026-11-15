@@ -45,6 +45,10 @@ data class QuizUiState(
     // 连击
     val combo: Int = 0,
     val bestCombo: Int = 0,
+    // 限时挑战
+    val timeLeft: Int = 0,
+    val bestTimedScore: Int = 0,
+    val newTimedRecord: Boolean = false,
     // 分类掌握度
     val categoryStats: Map<String, CategoryStat> = emptyMap(),
     // 题库状态
@@ -87,6 +91,7 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
             streak = saved.streak,
             bestStreak = saved.bestStreak,
             bestCombo = saved.bestCombo,
+            bestTimedScore = saved.bestTimedScore,
             categoryStats = saved.categoryStats,
             bankVersion = repo.bankVersion
         )
@@ -189,6 +194,32 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
         beginSession(DailyChallenge.todayQuestions(repo.allQuestions), category = null, type = "daily", mode = SessionMode.Normal)
     }
 
+    /** 限时挑战：60 秒内答尽量多题，题池给足 60 题避免提前打穿。 */
+    fun startTimed() {
+        beginSession(
+            repo.drawRandom(minOf(repo.totalCount, TIMED_POOL_SIZE)),
+            category = null, type = "timed", mode = SessionMode.Normal
+        )
+        uiState = uiState.copy(timeLeft = TIMED_CHALLENGE_SECONDS, newTimedRecord = false)
+    }
+
+    /** 倒计时到点或手动收卷：计入当前题（若已作答）并跳结算。 */
+    fun finishTimed() {
+        if (uiState.sessionType != "timed") return
+        settleTimed()
+        uiState = uiState.copy(screen = Screen.Result)
+    }
+
+    /** 每秒倒计时回调：减 1，到 0 自动收卷。 */
+    fun tickTimed() {
+        if (uiState.sessionType != "timed") return
+        if (uiState.timeLeft <= 1) {
+            finishTimed()
+        } else {
+            uiState = uiState.copy(timeLeft = uiState.timeLeft - 1)
+        }
+    }
+
     fun startMistakes(mode: SessionMode = SessionMode.Normal) {
         val wrong = repo.allByIds(uiState.mistakeIds.toList())
         if (wrong.isNotEmpty()) beginSession(wrong.shuffled(), category = null, type = "mistakes", mode = mode)
@@ -258,6 +289,7 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
         if (uiState.chosenIndex == null && uiState.mode == SessionMode.Normal) return
         if (uiState.isLastQuestion) {
             if (uiState.sessionType == "daily") settleDaily()
+            if (uiState.sessionType == "timed") settleTimed()
             uiState = uiState.copy(screen = Screen.Result)
         } else {
             uiState = uiState.copy(currentIndex = uiState.currentIndex + 1, chosenIndex = null)
@@ -289,6 +321,18 @@ class QuizViewModel(private val repo: QuizRepository) : ViewModel() {
         persistProgress()
     }
 
+    /** 限时挑战结算：答对数即成绩，刷新纪录则标记 newTimedRecord。 */
+    private fun settleTimed() {
+        val score = uiState.sessionCorrect
+        val isRecord = score > saved.bestTimedScore
+        saved = saved.copy(bestTimedScore = maxOf(saved.bestTimedScore, score))
+        uiState = uiState.copy(
+            bestTimedScore = saved.bestTimedScore,
+            newTimedRecord = isRecord
+        )
+        persistProgress()
+    }
+
     private fun persistProgress() {
         saved = saved.copy(
             totalAnswered = uiState.totalAnswered,
@@ -315,6 +359,8 @@ private val kotlinx.serialization.json.JsonElement.jsonObjectCompat: kotlinx.ser
     companion object {
         const val DEFAULT_SESSION_SIZE = 15
         const val DAILY_SESSION_SIZE = 10
+        const val TIMED_CHALLENGE_SECONDS = 60
+        const val TIMED_POOL_SIZE = 60
 
         fun factory(repo: QuizRepository): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
