@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -61,6 +62,10 @@ fun HomeScreen(
     backdrop: Backdrop,
     dark: Boolean,
     viewModel: QuizViewModel,
+    currentVersion: String,
+    updateChecking: Boolean,
+    updateMessage: String?,
+    onCheckUpdate: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state = viewModel.uiState
@@ -317,6 +322,44 @@ fun HomeScreen(
                         )
                         Text(
                             state.bankMessage ?: "题库版本 v${state.bankVersion}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        // ===== 应用版本更新（手动检查入口）=====
+        item {
+            PressableGlass(
+                onClick = onCheckUpdate,
+                enabled = !updateChecking,
+                shape = GlassShapes.card,
+                backdrop = backdrop,
+                dark = dark,
+                style = GlassStyle.Card,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Rounded.SystemUpdate,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            if (updateChecking) "正在检查版本更新…"
+                            else updateMessage ?: "检查版本更新",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            "当前 v$currentVersion · 启动时也会自动检查",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -41,6 +42,7 @@ import com.wencui.quiz.update.ApkInstaller
 import com.wencui.quiz.update.UpdateChecker
 import com.wencui.quiz.update.isNewerVersion
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,7 +66,10 @@ fun WenCuiApp() {
         androidx.lifecycle.viewmodel.compose.viewModel(factory = QuizViewModel.factory(repo))
 
     // ===== 应用内更新系统 =====
+    var updateChecking by remember { mutableStateOf(false) }
+    var updateMessage by remember { mutableStateOf<String?>(null) }
     var updateState by remember { mutableStateOf<UpdateState>(UpdateState.Idle) }
+    val scope = rememberCoroutineScope()
     var downloadedApk by remember { mutableStateOf<java.io.File?>(null) }
     val localVersion = remember {
         runCatching {
@@ -72,15 +77,32 @@ fun WenCuiApp() {
         }.getOrDefault("0")
     }
 
+    // 版本检查：手动按钮与启动静默检查共用
+    fun checkUpdate(silent: Boolean) {
+        if (updateChecking) return
+        updateChecking = true
+        if (!silent) updateMessage = null
+        scope.launch {
+            val release = UpdateChecker.check()
+            updateChecking = false
+            if (release == null) {
+                if (!silent) updateMessage = "检查失败，请稍后重试"
+                return@launch
+            }
+            // tag 恒为 "latest"，真实版本号需从 APK 文件名 / Release 名称解析
+            val remote = release.version ?: release.tagName
+            if (isNewerVersion(remote, localVersion) && release.apkAsset != null) {
+                updateState = UpdateState.Available(release)
+            } else {
+                if (!silent) updateMessage = "已是最新版本 v$remote"
+            }
+        }
+    }
+
     // 启动 3 秒后静默检查更新（不阻塞首屏）
     LaunchedEffect(Unit) {
         delay(3000)
-        val release = UpdateChecker.check() ?: return@LaunchedEffect
-        // tag 恒为 "latest"，真实版本号需从 APK 文件名 / Release 名称解析
-        val remote = release.version ?: release.tagName
-        if (isNewerVersion(remote, localVersion) && release.apkAsset != null) {
-            updateState = UpdateState.Available(release)
-        }
+        checkUpdate(silent = true)
     }
 
     fun startDownload(url: String) {
@@ -128,7 +150,13 @@ fun WenCuiApp() {
             label = "screenSwitch"
         ) { screen ->
             when (screen) {
-                Screen.Home -> HomeScreen(backdrop, dark, viewModel)
+                Screen.Home -> HomeScreen(
+                    backdrop, dark, viewModel,
+                    currentVersion = localVersion,
+                    updateChecking = updateChecking,
+                    updateMessage = updateMessage,
+                    onCheckUpdate = { checkUpdate(silent = false) }
+                )
                 Screen.Quiz -> QuizScreen(backdrop, dark, viewModel)
                 Screen.Result -> ResultScreen(backdrop, dark, viewModel)
                 Screen.WrongBook -> WrongBookScreen(backdrop, dark, viewModel)
